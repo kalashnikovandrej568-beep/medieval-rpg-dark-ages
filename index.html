@@ -295,6 +295,13 @@ const ITEMS = {
   potion: {id:'potion', name:'Зелье HP', type:'food',heal:80, val:30, desc:'+80 HP'},
   elixir: {id:'elixir', name:'Эликсир',  type:'food',heal:999,val:90, desc:'Полное HP'},
   stam_pot:{id:'stam_pot',name:'Зелье Стамины',type:'stamina',heal:50,val:20,desc:'+50 Стамина'},
+  // Boss summoning items
+  rat_totem:    {id:'rat_totem',    name:'Крысиный Тотем',    type:'summon', val:0, desc:'Призывает Короля Крыс в Арене', summonBoss:'rat_king'},
+  forest_horn:  {id:'forest_horn',  name:'Рог Леса',          type:'summon', val:0, desc:'Призывает Лесного Стража в Руинах', summonBoss:'forest_guard'},
+  sand_scarab:  {id:'sand_scarab',  name:'Скарабей Песков',    type:'summon', val:0, desc:'Призывает Повелителя Песков на Алтаре', summonBoss:'sand_lord'},
+  golem_core:   {id:'golem_core',   name:'Ядро Голема',        type:'summon', val:0, desc:'Призывает Горного Голема на Алтаре', summonBoss:'mountain_golem'},
+  swamp_eye:    {id:'swamp_eye',    name:'Глаз Болот',         type:'summon', val:0, desc:'Призывает Болотного Ужаса в Руинах', summonBoss:'swamp_horror'},
+  dragon_heart: {id:'dragon_heart', name:'Сердце Дракона',     type:'summon', val:0, desc:'Призывает Древнего Дракона', summonBoss:'elder_dragon'},
 };
 
 // ===== RACES =====
@@ -314,8 +321,9 @@ const RACE_IDS = Object.keys(RACES);
 
 // ===== QUEST SYSTEM =====
 const QUESTS = [
+  // ── Basic quest chain ──
   {id:'q_rats', name:'Крысиная напасть', icon:'🐀', npcName:'Староста Борис', area:'village',
-   desc:'Убейте 5 крыс в лесу — они портят урожай!', type:'kill', target:'rat', need:5,
+   desc:'Убейте 5 крыс — они портят урожай!', type:'kill', target:'rat', need:5,
    rewardGold:40, rewardXp:30, rewardItem:null, followUp:'q_wolves'},
   {id:'q_wolves', name:'Волчья стая', icon:'🐺', npcName:'Охотник Прохор', area:'forest',
    desc:'Убейте 3 волков — они нападают на скот.', type:'kill', target:'wolf', need:3,
@@ -338,6 +346,25 @@ const QUESTS = [
   {id:'q_skeletons', name:'Беспокойные мертвецы', icon:'💀', npcName:'Монах Лука', area:'castle',
    desc:'Скелеты восстали в подземелье. Упокойте 5 скелетов.', type:'kill', target:'skeleton', need:5,
    rewardGold:80, rewardXp:70, rewardItem:null, followUp:null},
+  // ── Boss quest chains ──
+  {id:'q_boss_rats', name:'Владыка Крыс', icon:'👑🐀', npcName:'Староста Борис', area:'village',
+   desc:'Убейте 15 крыс, чтобы выманить их короля.', type:'kill', target:'rat', need:15,
+   rewardGold:0, rewardXp:50, rewardItem:'rat_totem', followUp:null, prereq:'q_rats'},
+  {id:'q_boss_forest', name:'Пробуждение Стража', icon:'🌳', npcName:'Охотник Прохор', area:'forest',
+   desc:'Убейте 8 медведей, нарушивших баланс леса.', type:'kill', target:'bear', need:8,
+   rewardGold:0, rewardXp:100, rewardItem:'forest_horn', followUp:null, prereq:'q_wolves'},
+  {id:'q_boss_sand', name:'Проклятие Пустыни', icon:'🏜️', npcName:'Маг Захар', area:'castle',
+   desc:'Убейте 6 демонов в пустыне, чтобы найти Скарабея.', type:'kill', target:'demon', need:6,
+   rewardGold:0, rewardXp:150, rewardItem:'sand_scarab', followUp:null, prereq:'q_knight'},
+  {id:'q_boss_golem', name:'Каменное Сердце', icon:'🗿', npcName:'Отшельник', area:'mountains',
+   desc:'Убейте 5 троллей, чтобы собрать Ядро Голема.', type:'kill', target:'troll', need:5,
+   rewardGold:0, rewardXp:120, rewardItem:'golem_core', followUp:null, prereq:'q_orcs'},
+  {id:'q_boss_swamp', name:'Ужас из Глубин', icon:'🐸', npcName:'Травница Глафира', area:'village',
+   desc:'Убейте 8 пауков и 5 скелетов на болотах.', type:'kill', target:'spider', need:8,
+   rewardGold:0, rewardXp:100, rewardItem:'swamp_eye', followUp:null, prereq:'q_spider'},
+  {id:'q_boss_dragon', name:'Древнее Зло', icon:'🔥', npcName:'Король', area:'castle',
+   desc:'Убейте 3 виверн. Найдите Сердце Дракона.', type:'kill', target:'dragon', need:3,
+   rewardGold:0, rewardXp:250, rewardItem:'dragon_heart', followUp:null, prereq:'q_dragon'},
 ];
 
 // ===== ENEMY TEMPLATES =====
@@ -593,36 +620,65 @@ const PROPERTY_TYPES = {
 };
 
 // ===== AREA DEFINITIONS =====
-// Outdoor areas connect at edges (seamless), indoor/underground via cave entrances
+// One unified outdoor world + separate indoor areas (entered via cave entrances)
 const AREAS = {
-  // — Outdoor surface areas (connected at edges) —
-  village:   {name:'Деревня Сосновка',   w:55, h:45, ground:'#3a6a25', groundAlt:'#357a22', outdoor:true},
-  forest:    {name:'Тёмный Лес',         w:65, h:55, ground:'#1e4a12', groundAlt:'#1a5510', outdoor:true},
-  plains:    {name:'Поля и Пастбища',    w:60, h:45, ground:'#5a8a30', groundAlt:'#4e7a28', outdoor:true},
-  castle:    {name:'Замок Грозный',      w:50, h:45, ground:'#4a4a3e', groundAlt:'#555548', outdoor:true},
-  swamp:     {name:'Гиблые Болота',      w:55, h:50, ground:'#2a4a20', groundAlt:'#254518', outdoor:true},
-  desert:    {name:'Пустыня Забвения',   w:60, h:50, ground:'#8a7a40', groundAlt:'#957f38', outdoor:true},
-  mountains: {name:'Горный Перевал',     w:55, h:45, ground:'#5a5a50', groundAlt:'#4a4a42', outdoor:true},
-  coast:     {name:'Побережье',          w:55, h:40, ground:'#6a8a50', groundAlt:'#5e7e45', outdoor:true},
-  // — Indoor/underground areas (entered via cave/door entrances) —
-  dungeon:   {name:'Подземелье Теней',   w:45, h:40, ground:'#1a1a1a', groundAlt:'#222222', indoor:true},
-  mines:     {name:'Заброшенные Рудники',w:50, h:45, ground:'#252015', groundAlt:'#2a2518', indoor:true},
-  catacombs: {name:'Катакомбы',          w:45, h:40, ground:'#1e1a18', groundAlt:'#24201e', indoor:true},
-  dragon_lair:{name:'Логово Дракона',    w:40, h:35, ground:'#2a1510', groundAlt:'#301a15', indoor:true},
+  world:      {name:'Мир',                w:200, h:160, ground:'#3a6a25', groundAlt:'#357a22', outdoor:true},
+  dungeon:    {name:'Подземелье Теней',   w:45,  h:40,  ground:'#1a1a1a', groundAlt:'#222222', indoor:true},
+  mines:      {name:'Заброшенные Рудники',w:50,  h:45,  ground:'#252015', groundAlt:'#2a2518', indoor:true},
+  catacombs:  {name:'Катакомбы',          w:45,  h:40,  ground:'#1e1a18', groundAlt:'#24201e', indoor:true},
+  dragon_lair:{name:'Логово Дракона',     w:40,  h:35,  ground:'#2a1510', groundAlt:'#301a15', indoor:true},
 };
 
-// Edge connections: which outdoor areas connect at which edges
-// format: {areaId: {right:'otherArea', left:'otherArea', top:'otherArea', bottom:'otherArea'}}
-const AREA_CONNECTIONS = {
-  village: {right:'forest', top:'castle', left:'plains', bottom:'coast'},
-  forest:  {left:'village', right:'desert', top:'mountains'},
-  plains:  {right:'village', top:'castle', bottom:'swamp'},
-  castle:  {bottom:'village', left:'plains', right:'mountains'},
-  swamp:   {top:'plains', right:'village'},
-  desert:  {left:'forest', top:'mountains'},
-  mountains:{bottom:'forest', left:'castle', right:'desert'},
-  coast:   {top:'village'},
+// Biome zones within the unified world map (pixel coords)
+const BIOMES = [
+  {id:'mountains', name:'Горный Перевал',    x:0,    y:0,    w:3200, h:1700, ground:'#5a5a50', groundAlt:'#4a4a42'},
+  {id:'desert',    name:'Пустыня Забвения',  x:3200, y:0,    w:3200, h:1700, ground:'#8a7a40', groundAlt:'#957f38'},
+  {id:'castle',    name:'Замок Грозный',     x:0,    y:1700, w:2200, h:1500, ground:'#4a4a3e', groundAlt:'#555548'},
+  {id:'forest',    name:'Тёмный Лес',        x:2200, y:1700, w:4200, h:1500, ground:'#1e4a12', groundAlt:'#1a5510'},
+  {id:'plains',    name:'Поля и Пастбища',   x:0,    y:3200, w:1600, h:1280, ground:'#5a8a30', groundAlt:'#4e7a28'},
+  {id:'village',   name:'Деревня Сосновка',  x:1600, y:3200, w:1600, h:1280, ground:'#3a6a25', groundAlt:'#357a22'},
+  {id:'swamp',     name:'Гиблые Болота',     x:3200, y:3200, w:1600, h:1280, ground:'#2a4a20', groundAlt:'#254518'},
+  {id:'coast',     name:'Побережье',         x:4800, y:3200, w:1600, h:1280, ground:'#6a8a50', groundAlt:'#5e7e45'},
+];
+
+function getBiome(px, py) {
+  for (const b of BIOMES) {
+    if (px >= b.x && px < b.x + b.w && py >= b.y && py < b.y + b.h) return b;
+  }
+  return BIOMES[5]; // default village
+}
+
+// ===== BOSS ENEMIES =====
+const BOSSES = {
+  rat_king:      {name:'Король Крыс',       hp:500,  atk:18, def:6,  xp:200,  gold:150, speed:2.0, color1:'#5a4030',color2:'#8a6a50', r:22, agro:300, boss:true},
+  forest_guard:  {name:'Лесной Страж',      hp:800,  atk:25, def:10, xp:350,  gold:250, speed:1.5, color1:'#2a5a1a',color2:'#4a8a3a', r:28, agro:350, boss:true},
+  sand_lord:     {name:'Повелитель Песков',  hp:1000, atk:32, def:14, xp:500,  gold:400, speed:1.8, color1:'#a08030',color2:'#c0a050', r:26, agro:350, boss:true},
+  mountain_golem:{name:'Горный Голем',       hp:1200, atk:28, def:20, xp:550,  gold:350, speed:0.8, color1:'#606050',color2:'#808070', r:32, agro:250, boss:true},
+  swamp_horror:  {name:'Болотный Ужас',      hp:900,  atk:30, def:12, xp:450,  gold:300, speed:1.4, color1:'#2a4a1a',color2:'#4a6a30', r:30, agro:300, boss:true},
+  elder_dragon:  {name:'Древний Дракон',     hp:2000, atk:45, def:22, xp:1000, gold:800, speed:1.6, color1:'#801010',color2:'#c03020', r:36, agro:400, boss:true},
 };
+
+// ===== STRUCTURES (special interactable buildings in world) =====
+const STRUCTURES = {
+  arena:  {name:'Боевая Арена',     w:100, h:80,  color:'#5a4030', roof:'#6a3020', icon:'⚔️'},
+  altar:  {name:'Алтарь Призыва',   w:60,  h:50,  color:'#3a2a40', roof:'#4a2050', icon:'🔮'},
+  ruins:  {name:'Древние Руины',    w:90,  h:70,  color:'#5a5a48', roof:'#4a4a3a', icon:'🏛️'},
+  shrine: {name:'Святилище',        w:50,  h:45,  color:'#4a5a60', roof:'#3a4a50', icon:'⛩️'},
+  tower:  {name:'Сторожевая Башня', w:45,  h:55,  color:'#5a5a58', roof:'#404045', icon:'🗼'},
+};
+
+// ===== RANDOM EVENTS =====
+const RANDOM_EVENTS = [
+  {id:'goblin_raid',   name:'🗡️ Набег гоблинов!',       chance:.003, enemies:[{type:'goblin',count:5},{type:'orc',count:1}], duration:60},
+  {id:'undead_rising', name:'💀 Восстание мёртвых!',     chance:.002, enemies:[{type:'skeleton',count:4},{type:'demon',count:1}], duration:60},
+  {id:'bandit_ambush', name:'🏴 Засада разбойников!',    chance:.003, enemies:[{type:'bandit',count:4},{type:'knight',count:1}], duration:45},
+  {id:'blood_moon',    name:'🌑 Кровавая луна!',         chance:.001, enemies:null, duration:90},
+  {id:'treasure',      name:'💰 Найден клад!',           chance:.004, enemies:null, duration:0},
+  {id:'wanderer',      name:'🧙 Странствующий торговец!', chance:.002, enemies:null, duration:120},
+];
+
+let activeEvent = null, eventTimer = 0, eventEnemies = [], worldStructures = [];
+let bossActive = null; // currently spawned boss enemy ref
 
 const TW = 40;
 
@@ -630,7 +686,7 @@ const TW = 40;
 let G = {}, cam = {x:0, y:0, zoom:1}, keys = {}, mouse = {x:0, y:0, down:false}, particles = [], floatTexts = [];
 let enemies = [], npcs = [], buildings = [], portals = [], itemsOnGround = [];
 let terrainTrees = [], terrainRocks = [], terrainWater = [], terrainPaths = [];
-let curArea = 'village', overlayOpen = false, nearInteract = null;
+let curArea = 'world', overlayOpen = false, nearInteract = null;
 let atkCooldown = 0, dashCooldown = 0, dashTimer = 0, dashDx = 0, dashDy = 0;
 let dayTimer = 0, lastTime = 0, shopTab = 'buy', gameStarted = false;
 // Ambient VFX
@@ -639,6 +695,8 @@ let screenShakeX = 0, screenShakeY = 0, screenShakeDur = 0;
 let weatherDrops = [], weatherTimer = 0;
 let dayNightCycle = 0; // 0..1 full cycle
 let respawnTimers = {};
+let curBiome = null; // current biome (for HUD)
+let eventCooldown = 0; // seconds until next event can trigger
 
 // ===== INIT GAME STATE =====
 function initGame() {
@@ -685,182 +743,195 @@ function recalc() {
 function loadArea(areaId) {
   curArea = areaId;
   const A = AREAS[areaId];
-  document.getElementById('hud-loc').textContent = A.name;
   enemies = []; npcs = []; buildings = []; portals = []; itemsOnGround = [];
   terrainTrees = []; terrainRocks = []; terrainWater = []; terrainPaths = [];
-  ambientParticles = []; weatherDrops = [];
+  ambientParticles = []; weatherDrops = []; worldStructures = [];
   respawnTimers = {};
+  activeEvent = null; eventTimer = 0; eventEnemies = []; bossActive = null;
   const aw = A.w * TW, ah = A.h * TH;
 
-  // ── Generate edge portals for outdoor-to-outdoor connections ──
-  const conn = AREA_CONNECTIONS[areaId];
-  if (conn) {
-    if (conn.right) portals.push({x:aw-30, y:ah/2-100, w:30, h:200, to:conn.right, edge:'left', label:AREAS[conn.right].name+' →', edgePortal:true});
-    if (conn.left)  portals.push({x:0, y:ah/2-100, w:30, h:200, to:conn.left, edge:'right', label:'← '+AREAS[conn.left].name, edgePortal:true});
-    if (conn.top)   portals.push({x:aw/2-100, y:0, w:200, h:30, to:conn.top, edge:'bottom', label:'↑ '+AREAS[conn.top].name, edgePortal:true});
-    if (conn.bottom)portals.push({x:aw/2-100, y:ah-30, w:200, h:30, to:conn.bottom, edge:'top', label:'↓ '+AREAS[conn.bottom].name, edgePortal:true});
-  }
+  if (areaId === 'world') {
+    // ══════════ UNIFIED WORLD ══════════
+    const B = {};
+    BIOMES.forEach(b => B[b.id] = b);
+    document.getElementById('hud-loc').textContent = 'Мир';
 
-  // ── Area content ──
-  if (areaId === 'village') {
+    // ── VILLAGE ──
+    const v = B.village;
     buildings.push(
-      {x:280, y:180, w:90, h:65, color:'#6a4a20', roof:'#8a3020', name:'Лавка', type:'shop'},
-      {x:550, y:160, w:100, h:70, color:'#5a3a18', roof:'#704020', name:'Таверна', type:'tavern'},
-      {x:820, y:200, w:95, h:65, color:'#4a3a1a', roof:'#604020', name:'Работорговец', type:'slave'},
-      {x:180, y:450, w:65, h:55, color:'#5a4a20', roof:'#7a3a20', name:'Дом', type:'none'},
-      {x:450, y:500, w:65, h:55, color:'#5a4a25', roof:'#7a4020', name:'Дом', type:'none'},
-      {x:700, y:460, w:80, h:60, color:'#5a4020', roof:'#7a3520', name:'Кузница', type:'shop'},
-      {x:350, y:650, w:60, h:50, color:'#5a4a28', roof:'#7a4020', name:'Дом', type:'none'},
-      {x:900, y:600, w:70, h:55, color:'#5a4a22', roof:'#7a3520', name:'Мельница', type:'none'},
-      {x:150, y:680, w:60, h:50, color:'#4a4020', roof:'#6a3520', name:'Амбар', type:'none'},
+      {x:v.x+280, y:v.y+180, w:90, h:65, color:'#6a4a20', roof:'#8a3020', name:'Лавка', type:'shop'},
+      {x:v.x+550, y:v.y+160, w:100,h:70, color:'#5a3a18', roof:'#704020', name:'Таверна', type:'tavern'},
+      {x:v.x+820, y:v.y+200, w:95, h:65, color:'#4a3a1a', roof:'#604020', name:'Работорговец', type:'slave'},
+      {x:v.x+180, y:v.y+450, w:65, h:55, color:'#5a4a20', roof:'#7a3a20', name:'Дом', type:'none'},
+      {x:v.x+450, y:v.y+500, w:65, h:55, color:'#5a4a25', roof:'#7a4020', name:'Дом', type:'none'},
+      {x:v.x+700, y:v.y+460, w:80, h:60, color:'#5a4020', roof:'#7a3520', name:'Кузница', type:'shop'},
+      {x:v.x+350, y:v.y+650, w:60, h:50, color:'#5a4a28', roof:'#7a4020', name:'Дом', type:'none'},
+      {x:v.x+900, y:v.y+600, w:70, h:55, color:'#5a4a22', roof:'#7a3520', name:'Мельница', type:'none'},
+      {x:v.x+150, y:v.y+680, w:60, h:50, color:'#4a4020', roof:'#6a3520', name:'Амбар', type:'none'},
     );
     npcs.push(
-      {x:325, y:285, r:11, name:'Торговец', color:'#8a7040', dialog:'trade'},
-      {x:600, y:270, r:11, name:'Трактирщик', color:'#7a5030', dialog:'tavern'},
-      {x:870, y:310, r:11, name:'Работорговец', color:'#5a3020', dialog:'slave', traderId:'village_trader'},
-      {x:745, y:560, r:11, name:'Кузнец', color:'#705030', dialog:'trade'},
-      {x:480, y:530, r:11, name:'Староста', color:'#6a6040', dialog:'property'},
-      {x:400, y:400, r:11, name:'Староста Борис', color:'#7a7050', dialog:'quest', questId:'q_rats', skinColor:'#d4a878', hairColor:'#6a4830', gender:'m'},
-      {x:180, y:350, r:11, name:'Капитан стражи', color:'#5a5a70', dialog:'quest', questId:'q_bandits', skinColor:'#e0b888', hairColor:'#2a1a0a', gender:'m'},
-      {x:550, y:680, r:11, name:'Травница Глафира', color:'#4a7050', dialog:'quest', questId:'q_spider', skinColor:'#f0dcc0', hairColor:'#8a2020', gender:'f'},
+      {x:v.x+325, y:v.y+285, r:11, name:'Торговец', color:'#8a7040', dialog:'trade'},
+      {x:v.x+600, y:v.y+270, r:11, name:'Трактирщик', color:'#7a5030', dialog:'tavern'},
+      {x:v.x+870, y:v.y+310, r:11, name:'Работорговец', color:'#5a3020', dialog:'slave', traderId:'village_trader'},
+      {x:v.x+745, y:v.y+560, r:11, name:'Кузнец', color:'#705030', dialog:'trade'},
+      {x:v.x+480, y:v.y+530, r:11, name:'Староста', color:'#6a6040', dialog:'property'},
+      {x:v.x+400, y:v.y+400, r:11, name:'Староста Борис', color:'#7a7050', dialog:'quest', questId:'q_rats', skinColor:'#d4a878', hairColor:'#6a4830', gender:'m'},
+      {x:v.x+420, y:v.y+430, r:10, name:'Староста Борис', color:'#7a7050', dialog:'quest', questId:'q_boss_rats', skinColor:'#d4a878', hairColor:'#6a4830', gender:'m'},
+      {x:v.x+180, y:v.y+350, r:11, name:'Капитан стражи', color:'#5a5a70', dialog:'quest', questId:'q_bandits', skinColor:'#e0b888', hairColor:'#2a1a0a', gender:'m'},
+      {x:v.x+550, y:v.y+680, r:11, name:'Травница Глафира', color:'#4a7050', dialog:'quest', questId:'q_spider', skinColor:'#f0dcc0', hairColor:'#8a2020', gender:'f'},
+      {x:v.x+570, y:v.y+710, r:10, name:'Травница Глафира', color:'#4a7050', dialog:'quest', questId:'q_boss_swamp', skinColor:'#f0dcc0', hairColor:'#8a2020', gender:'f'},
     );
-    for (let i = 0; i < 4; i++) spawnEnemy('rat', 900+rr()*500, 500+rr()*400);
-    for (let i = 0; i < 2; i++) spawnEnemy('wolf', 1000+rr()*600, 300+rr()*800);
-    for (let i = 0; i < 50; i++) terrainTrees.push({x:rr()*aw, y:rr()*ah, s:14+rr()*10, type:'oak'});
-    for (let i = 0; i < 15; i++) terrainRocks.push({x:rr()*aw, y:rr()*ah, s:5+rr()*8});
-    terrainPaths.push({x1:325, y1:255, x2:600, y2:240}, {x1:600, y1:240, x2:860, y2:270});
+    for(let i=0;i<6;i++) spawnEnemy('rat', v.x+200+rr()*1200, v.y+200+rr()*900);
+    for(let i=0;i<3;i++) spawnEnemy('wolf', v.x+400+rr()*800, v.y+100+rr()*1000);
+    for(let i=0;i<60;i++) terrainTrees.push({x:v.x+rr()*v.w, y:v.y+rr()*v.h, s:14+rr()*10, type:'oak'});
+    for(let i=0;i<15;i++) terrainRocks.push({x:v.x+rr()*v.w, y:v.y+rr()*v.h, s:5+rr()*8});
+    terrainPaths.push({x1:v.x+325,y1:v.y+255,x2:v.x+600,y2:v.y+240},{x1:v.x+600,y1:v.y+240,x2:v.x+860,y2:v.y+270});
+    worldStructures.push({x:v.x+1200, y:v.y+400, ...STRUCTURES.arena, structType:'arena', biome:'village'});
 
-  } else if (areaId === 'forest') {
-    for (let i = 0; i < 8; i++) spawnEnemy('wolf', 200+rr()*2200, 200+rr()*1800);
-    for (let i = 0; i < 5; i++) spawnEnemy('bandit', 400+rr()*2000, 300+rr()*1600);
-    for (let i = 0; i < 4; i++) spawnEnemy('goblin', 500+rr()*1800, 400+rr()*1400);
-    for (let i = 0; i < 3; i++) spawnEnemy('bear', 600+rr()*1500, 400+rr()*1200);
-    for (let i = 0; i < 2; i++) spawnEnemy('orc', 800+rr()*1200, 500+rr()*1000);
-    npcs.push(
-      {x:150, y:500, r:11, name:'Охотник Прохор', color:'#5a7040', dialog:'quest', questId:'q_wolves', skinColor:'#c09060', hairColor:'#4a3020', gender:'m'},
-    );
-    // Cave entrance to Dungeon (dark hole in the ground)
-    portals.push({x:aw-300, y:200, w:50, h:35, to:'dungeon', sx:50, sy:AREAS.dungeon.h*TW-80, label:'🕳️ Пещера', cave:true});
-    for (let i = 0; i < 180; i++) terrainTrees.push({x:rr()*aw, y:rr()*ah, s:12+rr()*16, type:rr()>.3?'pine':'oak'});
-    for (let i = 0; i < 25; i++) terrainRocks.push({x:rr()*aw, y:rr()*ah, s:5+rr()*10});
+    // ── FOREST ──
+    const f = B.forest;
+    for(let i=0;i<12;i++) spawnEnemy('wolf', f.x+200+rr()*3800, f.y+100+rr()*1300);
+    for(let i=0;i<8;i++) spawnEnemy('bandit', f.x+300+rr()*3500, f.y+200+rr()*1100);
+    for(let i=0;i<6;i++) spawnEnemy('goblin', f.x+400+rr()*3400, f.y+200+rr()*1100);
+    for(let i=0;i<5;i++) spawnEnemy('bear', f.x+500+rr()*3200, f.y+200+rr()*1000);
+    for(let i=0;i<3;i++) spawnEnemy('orc', f.x+600+rr()*3000, f.y+300+rr()*900);
+    npcs.push({x:f.x+300, y:f.y+500, r:11, name:'Охотник Прохор', color:'#5a7040', dialog:'quest', questId:'q_wolves', skinColor:'#c09060', hairColor:'#4a3020', gender:'m'});
+    npcs.push({x:f.x+330, y:f.y+530, r:10, name:'Охотник Прохор', color:'#5a7040', dialog:'quest', questId:'q_boss_forest', skinColor:'#c09060', hairColor:'#4a3020', gender:'m'});
+    portals.push({x:f.x+3600, y:f.y+300, w:50, h:35, to:'dungeon', sx:50, sy:AREAS.dungeon.h*TW-80, label:'🕳️ Подземелье', cave:true});
+    for(let i=0;i<250;i++) terrainTrees.push({x:f.x+rr()*f.w, y:f.y+rr()*f.h, s:12+rr()*16, type:rr()>.3?'pine':'oak'});
+    for(let i=0;i<30;i++) terrainRocks.push({x:f.x+rr()*f.w, y:f.y+rr()*f.h, s:5+rr()*10});
+    worldStructures.push({x:f.x+2000, y:f.y+700, ...STRUCTURES.ruins, structType:'ruins', biome:'forest'});
 
-  } else if (areaId === 'plains') {
+    // ── PLAINS ──
+    const p = B.plains;
     buildings.push(
-      {x:400, y:300, w:70, h:55, color:'#6a5a20', roof:'#8a5a20', name:'Ферма', type:'none'},
-      {x:700, y:500, w:60, h:50, color:'#5a4a18', roof:'#7a4a18', name:'Хлев', type:'none'},
-      {x:250, y:600, w:75, h:55, color:'#6a4a25', roof:'#7a4a20', name:'Ветряная мельница', type:'none'},
+      {x:p.x+400, y:p.y+300, w:70, h:55, color:'#6a5a20', roof:'#8a5a20', name:'Ферма', type:'none'},
+      {x:p.x+700, y:p.y+500, w:60, h:50, color:'#5a4a18', roof:'#7a4a18', name:'Хлев', type:'none'},
+      {x:p.x+250, y:p.y+600, w:75, h:55, color:'#6a4a25', roof:'#7a4a20', name:'Ветряная мельница', type:'none'},
     );
-    npcs.push(
-      {x:450, y:380, r:11, name:'Фермер Тимофей', color:'#7a6a30', dialog:'trade', skinColor:'#d4a878', hairColor:'#6a4830', gender:'m'},
-    );
-    // Cave entrance to Mines
-    portals.push({x:150, y:150, w:50, h:35, to:'mines', sx:AREAS.mines.w*TW/2, sy:AREAS.mines.h*TW-80, label:'⛏️ Рудники', cave:true});
-    for (let i = 0; i < 5; i++) spawnEnemy('rat', 300+rr()*1500, 200+rr()*1200);
-    for (let i = 0; i < 3; i++) spawnEnemy('wolf', 500+rr()*1000, 400+rr()*800);
-    for (let i = 0; i < 2; i++) spawnEnemy('bandit', 700+rr()*1000, 300+rr()*1000);
-    for (let i = 0; i < 20; i++) terrainTrees.push({x:rr()*aw, y:rr()*ah, s:10+rr()*8, type:'oak'});
-    for (let i = 0; i < 8; i++) terrainRocks.push({x:rr()*aw, y:rr()*ah, s:4+rr()*6});
+    npcs.push({x:p.x+450, y:p.y+380, r:11, name:'Фермер Тимофей', color:'#7a6a30', dialog:'trade', skinColor:'#d4a878', hairColor:'#6a4830', gender:'m'});
+    portals.push({x:p.x+150, y:p.y+150, w:50, h:35, to:'mines', sx:AREAS.mines.w*TW/2, sy:AREAS.mines.h*TW-80, label:'⛏️ Рудники', cave:true});
+    for(let i=0;i<7;i++) spawnEnemy('rat', p.x+200+rr()*1200, p.y+100+rr()*1000);
+    for(let i=0;i<4;i++) spawnEnemy('wolf', p.x+300+rr()*1000, p.y+200+rr()*800);
+    for(let i=0;i<3;i++) spawnEnemy('bandit', p.x+400+rr()*800, p.y+200+rr()*800);
+    for(let i=0;i<25;i++) terrainTrees.push({x:p.x+rr()*p.w, y:p.y+rr()*p.h, s:10+rr()*8, type:'oak'});
+    for(let i=0;i<10;i++) terrainRocks.push({x:p.x+rr()*p.w, y:p.y+rr()*p.h, s:4+rr()*6});
+    worldStructures.push({x:p.x+1000, y:p.y+800, ...STRUCTURES.shrine, structType:'shrine', biome:'plains'});
 
-  } else if (areaId === 'castle') {
+    // ── CASTLE ──
+    const c = B.castle;
     buildings.push(
-      {x:280, y:280, w:110, h:85, color:'#555560', roof:'#404050', name:'Корол. Лавка', type:'shop'},
-      {x:600, y:260, w:100, h:75, color:'#505058', roof:'#3a3a48', name:'Таверна Замка', type:'tavern'},
-      {x:380, y:480, w:90, h:65, color:'#4a4a55', roof:'#383845', name:'Работорговец', type:'slave'},
-      {x:800, y:400, w:120, h:90, color:'#606068', roof:'#3a3a48', name:'Тронный Зал', type:'none'},
-      {x:150, y:180, w:80, h:60, color:'#505058', roof:'#3a3a45', name:'Казарма', type:'none'},
+      {x:c.x+280, y:c.y+280, w:110, h:85, color:'#555560', roof:'#404050', name:'Корол. Лавка', type:'shop'},
+      {x:c.x+600, y:c.y+260, w:100, h:75, color:'#505058', roof:'#3a3a48', name:'Таверна Замка', type:'tavern'},
+      {x:c.x+380, y:c.y+480, w:90, h:65, color:'#4a4a55', roof:'#383845', name:'Работорговец', type:'slave'},
+      {x:c.x+800, y:c.y+400, w:120, h:90, color:'#606068', roof:'#3a3a48', name:'Тронный Зал', type:'none'},
+      {x:c.x+150, y:c.y+180, w:80, h:60, color:'#505058', roof:'#3a3a45', name:'Казарма', type:'none'},
+      {x:c.x+1400,y:c.y+300, w:100, h:80, color:'#505058', roof:'#3a3a48', name:'Башня Мага', type:'none'},
     );
     npcs.push(
-      {x:340, y:400, r:11, name:'Корол. торговец', color:'#8080a0', dialog:'trade_castle'},
-      {x:650, y:370, r:11, name:'Трактирщик', color:'#705848', dialog:'tavern'},
-      {x:430, y:580, r:11, name:'Работорговец', color:'#504030', dialog:'slave', traderId:'castle_trader'},
-      {x:280, y:500, r:11, name:'Управляющий', color:'#6a6080', dialog:'property'},
-      {x:550, y:500, r:11, name:'Комендант Игнат', color:'#606080', dialog:'quest', questId:'q_orcs', skinColor:'#d4a878', hairColor:'#1a1a1a', gender:'m'},
-      {x:750, y:280, r:11, name:'Маг Захар', color:'#5a4080', dialog:'quest', questId:'q_knight', skinColor:'#f0dcc0', hairColor:'#c4a060', gender:'m'},
-      {x:850, y:500, r:11, name:'Король', color:'#8a7030', dialog:'quest', questId:'q_dragon', skinColor:'#e0b888', hairColor:'#6a4830', gender:'m'},
-      {x:500, y:350, r:11, name:'Монах Лука', color:'#6a6050', dialog:'quest', questId:'q_skeletons', skinColor:'#e8c8a0', hairColor:'#1a1a1a', gender:'m'},
+      {x:c.x+340, y:c.y+400, r:11, name:'Корол. торговец', color:'#8080a0', dialog:'trade_castle'},
+      {x:c.x+650, y:c.y+370, r:11, name:'Трактирщик', color:'#705848', dialog:'tavern'},
+      {x:c.x+430, y:c.y+580, r:11, name:'Работорговец', color:'#504030', dialog:'slave', traderId:'castle_trader'},
+      {x:c.x+280, y:c.y+500, r:11, name:'Управляющий', color:'#6a6080', dialog:'property'},
+      {x:c.x+550, y:c.y+500, r:11, name:'Комендант Игнат', color:'#606080', dialog:'quest', questId:'q_orcs', skinColor:'#d4a878', hairColor:'#1a1a1a', gender:'m'},
+      {x:c.x+750, y:c.y+280, r:11, name:'Маг Захар', color:'#5a4080', dialog:'quest', questId:'q_knight', skinColor:'#f0dcc0', hairColor:'#c4a060', gender:'m'},
+      {x:c.x+770, y:c.y+310, r:10, name:'Маг Захар', color:'#5a4080', dialog:'quest', questId:'q_boss_sand', skinColor:'#f0dcc0', hairColor:'#c4a060', gender:'m'},
+      {x:c.x+850, y:c.y+500, r:11, name:'Король', color:'#8a7030', dialog:'quest', questId:'q_dragon', skinColor:'#e0b888', hairColor:'#6a4830', gender:'m'},
+      {x:c.x+870, y:c.y+530, r:10, name:'Король', color:'#8a7030', dialog:'quest', questId:'q_boss_dragon', skinColor:'#e0b888', hairColor:'#6a4830', gender:'m'},
+      {x:c.x+500, y:c.y+350, r:11, name:'Монах Лука', color:'#6a6050', dialog:'quest', questId:'q_skeletons', skinColor:'#e8c8a0', hairColor:'#1a1a1a', gender:'m'},
     );
-    for (let i = 0; i < 3; i++) spawnEnemy('knight', 700+rr()*500, 200+rr()*600);
-    for (let i = 0; i < 10; i++) terrainTrees.push({x:rr()*aw, y:rr()*ah, s:10+rr()*8, type:'oak'});
-    for (let i = 0; i < 30; i++) terrainRocks.push({x:rr()*aw, y:rr()*ah, s:4+rr()*6});
+    for(let i=0;i<4;i++) spawnEnemy('knight', c.x+600+rr()*1200, c.y+200+rr()*1000);
+    for(let i=0;i<15;i++) terrainTrees.push({x:c.x+rr()*c.w, y:c.y+rr()*c.h, s:10+rr()*8, type:'oak'});
+    for(let i=0;i<35;i++) terrainRocks.push({x:c.x+rr()*c.w, y:c.y+rr()*c.h, s:4+rr()*6});
+    worldStructures.push({x:c.x+1800, y:c.y+600, ...STRUCTURES.tower, structType:'tower', biome:'castle'});
 
-  } else if (areaId === 'swamp') {
-    // Cave entrance to Catacombs
-    portals.push({x:aw/2, y:200, w:50, h:35, to:'catacombs', sx:AREAS.catacombs.w*TW/2, sy:AREAS.catacombs.h*TW-80, label:'💀 Катакомбы', cave:true});
-    for (let i = 0; i < 6; i++) spawnEnemy('spider', 200+rr()*1600, 200+rr()*1400);
-    for (let i = 0; i < 5; i++) spawnEnemy('skeleton', 300+rr()*1500, 300+rr()*1200);
-    for (let i = 0; i < 3; i++) spawnEnemy('orc', 500+rr()*1200, 400+rr()*1000);
-    for (let i = 0; i < 2; i++) spawnEnemy('troll', 700+rr()*1000, 500+rr()*800);
-    for (let i = 0; i < 80; i++) terrainTrees.push({x:rr()*aw, y:rr()*ah, s:10+rr()*12, type:'dead'});
-    for (let i = 0; i < 20; i++) terrainWater.push({x:rr()*aw, y:rr()*ah, rx:30+rr()*40, ry:15+rr()*25});
+    // ── SWAMP ──
+    const s = B.swamp;
+    portals.push({x:s.x+800, y:s.y+200, w:50, h:35, to:'catacombs', sx:AREAS.catacombs.w*TW/2, sy:AREAS.catacombs.h*TW-80, label:'💀 Катакомбы', cave:true});
+    for(let i=0;i<8;i++) spawnEnemy('spider', s.x+100+rr()*1400, s.y+100+rr()*1000);
+    for(let i=0;i<6;i++) spawnEnemy('skeleton', s.x+200+rr()*1200, s.y+200+rr()*900);
+    for(let i=0;i<4;i++) spawnEnemy('orc', s.x+300+rr()*1000, s.y+200+rr()*800);
+    for(let i=0;i<3;i++) spawnEnemy('troll', s.x+400+rr()*800, s.y+300+rr()*700);
+    for(let i=0;i<100;i++) terrainTrees.push({x:s.x+rr()*s.w, y:s.y+rr()*s.h, s:10+rr()*12, type:'dead'});
+    for(let i=0;i<25;i++) terrainWater.push({x:s.x+rr()*s.w, y:s.y+rr()*s.h, rx:30+rr()*40, ry:15+rr()*25});
+    worldStructures.push({x:s.x+1200, y:s.y+600, ...STRUCTURES.ruins, structType:'ruins', biome:'swamp'});
 
-  } else if (areaId === 'desert') {
-    for (let i = 0; i < 6; i++) spawnEnemy('bandit', 300+rr()*2000, 200+rr()*1400);
-    for (let i = 0; i < 4; i++) spawnEnemy('orc', 500+rr()*1800, 300+rr()*1200);
-    for (let i = 0; i < 3; i++) spawnEnemy('knight', 600+rr()*1400, 400+rr()*1000);
-    for (let i = 0; i < 2; i++) spawnEnemy('demon', 800+rr()*1200, 400+rr()*1000);
-    // Cave to Dragon's Lair
-    portals.push({x:aw-250, y:300, w:55, h:40, to:'dragon_lair', sx:AREAS.dragon_lair.w*TW/2, sy:AREAS.dragon_lair.h*TW-80, label:'🐉 Логово Дракона', cave:true});
-    for (let i = 0; i < 12; i++) terrainTrees.push({x:rr()*aw, y:rr()*ah, s:16+rr()*12, type:'cactus'});
-    for (let i = 0; i < 30; i++) terrainRocks.push({x:rr()*aw, y:rr()*ah, s:6+rr()*14});
+    // ── DESERT ──
+    const d = B.desert;
+    for(let i=0;i<8;i++) spawnEnemy('bandit', d.x+200+rr()*2800, d.y+100+rr()*1400);
+    for(let i=0;i<5;i++) spawnEnemy('orc', d.x+400+rr()*2400, d.y+200+rr()*1200);
+    for(let i=0;i<4;i++) spawnEnemy('knight', d.x+500+rr()*2200, d.y+200+rr()*1100);
+    for(let i=0;i<3;i++) spawnEnemy('demon', d.x+600+rr()*2000, d.y+300+rr()*1000);
+    portals.push({x:d.x+2800, y:d.y+300, w:55, h:40, to:'dragon_lair', sx:AREAS.dragon_lair.w*TW/2, sy:AREAS.dragon_lair.h*TW-80, label:'🐉 Логово Дракона', cave:true});
+    for(let i=0;i<20;i++) terrainTrees.push({x:d.x+rr()*d.w, y:d.y+rr()*d.h, s:16+rr()*12, type:'cactus'});
+    for(let i=0;i<40;i++) terrainRocks.push({x:d.x+rr()*d.w, y:d.y+rr()*d.h, s:6+rr()*14});
+    worldStructures.push({x:d.x+1500, y:d.y+800, ...STRUCTURES.altar, structType:'altar', biome:'desert'});
 
-  } else if (areaId === 'mountains') {
-    for (let i = 0; i < 5; i++) spawnEnemy('orc', 300+rr()*1600, 200+rr()*1200);
-    for (let i = 0; i < 3; i++) spawnEnemy('knight', 400+rr()*1400, 300+rr()*1000);
-    for (let i = 0; i < 3; i++) spawnEnemy('troll', 500+rr()*1200, 400+rr()*800);
-    for (let i = 0; i < 2; i++) spawnEnemy('demon', 700+rr()*1000, 300+rr()*800);
-    npcs.push(
-      {x:300, y:600, r:11, name:'Отшельник', color:'#6a6a5a', dialog:'trade', skinColor:'#c09060', hairColor:'#aaa', gender:'m'},
-    );
-    for (let i = 0; i < 15; i++) terrainTrees.push({x:rr()*aw, y:rr()*ah, s:10+rr()*8, type:'pine'});
-    for (let i = 0; i < 60; i++) terrainRocks.push({x:rr()*aw, y:rr()*ah, s:8+rr()*16});
+    // ── MOUNTAINS ──
+    const m = B.mountains;
+    for(let i=0;i<6;i++) spawnEnemy('orc', m.x+200+rr()*2800, m.y+100+rr()*1400);
+    for(let i=0;i<4;i++) spawnEnemy('knight', m.x+400+rr()*2400, m.y+200+rr()*1200);
+    for(let i=0;i<4;i++) spawnEnemy('troll', m.x+500+rr()*2200, m.y+200+rr()*1100);
+    for(let i=0;i<3;i++) spawnEnemy('demon', m.x+600+rr()*2000, m.y+300+rr()*1000);
+    npcs.push({x:m.x+500, y:m.y+900, r:11, name:'Отшельник', color:'#6a6a5a', dialog:'trade', skinColor:'#c09060', hairColor:'#aaa', gender:'m'});
+    npcs.push({x:m.x+530, y:m.y+930, r:10, name:'Отшельник', color:'#6a6a5a', dialog:'quest', questId:'q_boss_golem', skinColor:'#c09060', hairColor:'#aaa', gender:'m'});
+    for(let i=0;i<25;i++) terrainTrees.push({x:m.x+rr()*m.w, y:m.y+rr()*m.h, s:10+rr()*8, type:'pine'});
+    for(let i=0;i<80;i++) terrainRocks.push({x:m.x+rr()*m.w, y:m.y+rr()*m.h, s:8+rr()*16});
+    worldStructures.push({x:m.x+1600, y:m.y+600, ...STRUCTURES.altar, structType:'altar', biome:'mountains'});
 
-  } else if (areaId === 'coast') {
-    for (let i = 0; i < 4; i++) spawnEnemy('rat', 200+rr()*1600, 200+rr()*1000);
-    for (let i = 0; i < 3; i++) spawnEnemy('bandit', 400+rr()*1200, 300+rr()*800);
-    npcs.push(
-      {x:400, y:300, r:11, name:'Рыбак Ефим', color:'#5a7080', dialog:'trade', skinColor:'#c09060', hairColor:'#4a3020', gender:'m'},
-    );
-    buildings.push(
-      {x:350, y:250, w:70, h:50, color:'#5a5a48', roof:'#6a5a30', name:'Рыбацкая хижина', type:'none'},
-    );
-    for (let i = 0; i < 15; i++) terrainTrees.push({x:rr()*aw, y:rr()*ah*.6, s:12+rr()*8, type:'oak'});
-    for (let i = 0; i < 10; i++) terrainRocks.push({x:rr()*aw, y:rr()*ah, s:4+rr()*8});
-    // Water along south edge (beach)
-    for (let i = 0; i < 15; i++) terrainWater.push({x:rr()*aw, y:ah*.7+rr()*ah*.3, rx:40+rr()*60, ry:20+rr()*30});
+    // ── COAST ──
+    const co = B.coast;
+    for(let i=0;i<5;i++) spawnEnemy('rat', co.x+100+rr()*1400, co.y+100+rr()*800);
+    for(let i=0;i<4;i++) spawnEnemy('bandit', co.x+200+rr()*1200, co.y+200+rr()*700);
+    npcs.push({x:co.x+400, y:co.y+300, r:11, name:'Рыбак Ефим', color:'#5a7080', dialog:'trade', skinColor:'#c09060', hairColor:'#4a3020', gender:'m'});
+    buildings.push({x:co.x+350, y:co.y+250, w:70, h:50, color:'#5a5a48', roof:'#6a5a30', name:'Рыбацкая хижина', type:'none'});
+    for(let i=0;i<20;i++) terrainTrees.push({x:co.x+rr()*co.w, y:co.y+rr()*co.h*.6, s:12+rr()*8, type:'oak'});
+    for(let i=0;i<12;i++) terrainRocks.push({x:co.x+rr()*co.w, y:co.y+rr()*co.h, s:4+rr()*8});
+    for(let i=0;i<20;i++) terrainWater.push({x:co.x+rr()*co.w, y:co.y+co.h*.65+rr()*co.h*.35, rx:40+rr()*60, ry:20+rr()*30});
+    worldStructures.push({x:co.x+1000, y:co.y+500, ...STRUCTURES.shrine, structType:'shrine', biome:'coast'});
+
+    // Add structures as buildings
+    worldStructures.forEach(ws => {
+      buildings.push({x:ws.x, y:ws.y, w:ws.w, h:ws.h, color:ws.color, roof:ws.roof, name:ws.icon+' '+ws.name, type:'structure', structType:ws.structType, biome:ws.biome});
+    });
 
   } else if (areaId === 'dungeon') {
-    // Exit back to forest
-    portals.push({x:20, y:ah-60, w:50, h:35, to:'forest', sx:AREAS.forest.w*TW-350, sy:230, label:'🔼 Выход в Лес', cave:true});
-    for (let i = 0; i < 7; i++) spawnEnemy('skeleton', 200+rr()*1200, 200+rr()*1000);
-    for (let i = 0; i < 4; i++) spawnEnemy('demon', 400+rr()*1000, 300+rr()*800);
-    for (let i = 0; i < 2; i++) spawnEnemy('troll', 300+rr()*1000, 400+rr()*800);
-    spawnEnemy('dragon', 900, 700);
-    for (let i = 0; i < 50; i++) terrainRocks.push({x:rr()*aw, y:rr()*ah, s:5+rr()*14});
+    document.getElementById('hud-loc').textContent = A.name;
+    const fb = BIOMES.find(b=>b.id==='forest');
+    portals.push({x:20,y:ah-60,w:50,h:35,to:'world',sx:fb.x+3620,sy:fb.y+340,label:'🔼 Выход',cave:true});
+    for(let i=0;i<7;i++) spawnEnemy('skeleton',200+rr()*1200,200+rr()*1000);
+    for(let i=0;i<4;i++) spawnEnemy('demon',400+rr()*1000,300+rr()*800);
+    for(let i=0;i<2;i++) spawnEnemy('troll',300+rr()*1000,400+rr()*800);
+    spawnEnemy('dragon',900,700);
+    for(let i=0;i<50;i++) terrainRocks.push({x:rr()*aw,y:rr()*ah,s:5+rr()*14});
 
   } else if (areaId === 'mines') {
-    // Exit back to plains
-    portals.push({x:aw/2-25, y:ah-60, w:50, h:35, to:'plains', sx:175, sy:200, label:'🔼 Выход на Поля', cave:true});
-    for (let i = 0; i < 5; i++) spawnEnemy('goblin', 200+rr()*1400, 200+rr()*1200);
-    for (let i = 0; i < 4; i++) spawnEnemy('spider', 300+rr()*1200, 300+rr()*1000);
-    for (let i = 0; i < 3; i++) spawnEnemy('skeleton', 400+rr()*1000, 400+rr()*800);
-    for (let i = 0; i < 2; i++) spawnEnemy('orc', 500+rr()*800, 300+rr()*800);
-    for (let i = 0; i < 60; i++) terrainRocks.push({x:rr()*aw, y:rr()*ah, s:5+rr()*12});
+    document.getElementById('hud-loc').textContent = A.name;
+    const pb = BIOMES.find(b=>b.id==='plains');
+    portals.push({x:aw/2-25,y:ah-60,w:50,h:35,to:'world',sx:pb.x+175,sy:pb.y+200,label:'🔼 Выход',cave:true});
+    for(let i=0;i<5;i++) spawnEnemy('goblin',200+rr()*1400,200+rr()*1200);
+    for(let i=0;i<4;i++) spawnEnemy('spider',300+rr()*1200,300+rr()*1000);
+    for(let i=0;i<3;i++) spawnEnemy('skeleton',400+rr()*1000,400+rr()*800);
+    for(let i=0;i<2;i++) spawnEnemy('orc',500+rr()*800,300+rr()*800);
+    for(let i=0;i<60;i++) terrainRocks.push({x:rr()*aw,y:rr()*ah,s:5+rr()*12});
 
   } else if (areaId === 'catacombs') {
-    // Exit back to swamp
-    portals.push({x:aw/2-25, y:ah-60, w:50, h:35, to:'swamp', sx:AREAS.swamp.w*TW/2+25, sy:235, label:'🔼 Выход на Болота', cave:true});
-    for (let i = 0; i < 8; i++) spawnEnemy('skeleton', 200+rr()*1200, 200+rr()*1000);
-    for (let i = 0; i < 4; i++) spawnEnemy('demon', 400+rr()*1000, 300+rr()*800);
-    for (let i = 0; i < 3; i++) spawnEnemy('spider', 300+rr()*1000, 200+rr()*800);
-    for (let i = 0; i < 45; i++) terrainRocks.push({x:rr()*aw, y:rr()*ah, s:5+rr()*10});
+    document.getElementById('hud-loc').textContent = A.name;
+    const sb = BIOMES.find(b=>b.id==='swamp');
+    portals.push({x:aw/2-25,y:ah-60,w:50,h:35,to:'world',sx:sb.x+825,sy:sb.y+240,label:'🔼 Выход',cave:true});
+    for(let i=0;i<8;i++) spawnEnemy('skeleton',200+rr()*1200,200+rr()*1000);
+    for(let i=0;i<4;i++) spawnEnemy('demon',400+rr()*1000,300+rr()*800);
+    for(let i=0;i<3;i++) spawnEnemy('spider',300+rr()*1000,200+rr()*800);
+    for(let i=0;i<45;i++) terrainRocks.push({x:rr()*aw,y:rr()*ah,s:5+rr()*10});
 
   } else if (areaId === 'dragon_lair') {
-    // Exit back to desert
-    portals.push({x:aw/2-25, y:ah-60, w:50, h:35, to:'desert', sx:AREAS.desert.w*TW-275, sy:330, label:'🔼 Выход в Пустыню', cave:true});
-    spawnEnemy('dragon', aw/2, ah/2 - 100);
-    spawnEnemy('dragon', aw/2 - 200, ah/2);
-    for (let i = 0; i < 3; i++) spawnEnemy('demon', 200+rr()*1000, 200+rr()*800);
-    for (let i = 0; i < 40; i++) terrainRocks.push({x:rr()*aw, y:rr()*ah, s:6+rr()*16});
+    document.getElementById('hud-loc').textContent = A.name;
+    const db = BIOMES.find(b=>b.id==='desert');
+    portals.push({x:aw/2-25,y:ah-60,w:50,h:35,to:'world',sx:db.x+2830,sy:db.y+340,label:'🔼 Выход',cave:true});
+    spawnEnemy('dragon',aw/2,ah/2-100);
+    spawnEnemy('dragon',aw/2-200,ah/2);
+    for(let i=0;i<3;i++) spawnEnemy('demon',200+rr()*1000,200+rr()*800);
+    for(let i=0;i<40;i++) terrainRocks.push({x:rr()*aw,y:rr()*ah,s:6+rr()*16});
   }
 
   // Remove trees that overlap buildings or portals
@@ -870,19 +941,41 @@ function loadArea(areaId) {
     p.cave && t.x > p.x-40 && t.x < p.x+p.w+40 && t.y > p.y-40 && t.y < p.y+p.h+40));
 }
 
+// ── Boss spawning at structures ──
+function spawnBossAtStructure(bossId, structType) {
+  const st = worldStructures.find(s => s.structType === structType);
+  if (!st || bossActive) return false;
+  const bt = BOSSES[bossId];
+  if (!bt) return false;
+  const boss = {
+    ...bt, typeId: bossId, x: st.x + st.w/2, y: st.y + st.h + 60,
+    hp: bt.hp, maxHp: bt.hp, homeX: st.x + st.w/2, homeY: st.y + st.h + 60,
+    state:'idle', stateTimer:0, flashTimer:0, angle:0,
+    knockX:0, knockY:0, walkCycle:0, boss:true
+  };
+  enemies.push(boss);
+  bossActive = boss;
+  log(`⚔️ БОСС: ${bt.name} появился!`, 'li');
+  screenShakeDur = .5;
+  return true;
+}
+
 const rr = () => Math.random();
 const TH = TW;
 
 function spawnEnemy(typeId, x, y) {
   const t = ENEMIES[typeId];
-  enemies.push({
+  if (!t) return null;
+  const e = {
     ...t, typeId, x, y, hp: t.hp, maxHp: t.hp,
     homeX: x, homeY: y,
     state: 'idle', stateTimer: rr() * 3,
     flashTimer: 0, angle: rr() * Math.PI * 2,
     knockX: 0, knockY: 0,
     walkCycle: rr() * 100,
-  });
+  };
+  enemies.push(e);
+  return e;
 }
 
 // ===== DRAWING FUNCTIONS =====
@@ -892,15 +985,40 @@ function drawGround() {
   const A = AREAS[curArea], aw = A.w * TW, ah = A.h * TH;
   const z = cam.zoom || 1;
   const vw = C.width / z, vh = C.height / z;
-  // Base ground fill
-  X.fillStyle = A.ground;
-  X.fillRect(0, 0, aw, ah);
-  // Subtle tile pattern
-  for (let gx = Math.floor(cam.x/80)*80; gx < cam.x + vw + 80; gx += 80) {
-    for (let gy = Math.floor(cam.y/80)*80; gy < cam.y + vh + 80; gy += 80) {
-      if ((Math.floor(gx/80) + Math.floor(gy/80)) % 2 === 0) {
-        X.fillStyle = A.groundAlt;
-        X.fillRect(gx, gy, 80, 80);
+
+  if (curArea === 'world') {
+    // Draw each biome zone with its own colors
+    BIOMES.forEach(b => {
+      X.fillStyle = b.ground;
+      X.fillRect(b.x, b.y, b.w, b.h);
+      // Tile pattern per biome
+      const startX = Math.max(b.x, Math.floor(cam.x/80)*80);
+      const startY = Math.max(b.y, Math.floor(cam.y/80)*80);
+      const endX = Math.min(b.x + b.w, cam.x + vw + 80);
+      const endY = Math.min(b.y + b.h, cam.y + vh + 80);
+      for (let gx = startX; gx < endX; gx += 80) {
+        for (let gy = startY; gy < endY; gy += 80) {
+          if ((Math.floor(gx/80) + Math.floor(gy/80)) % 2 === 0) {
+            X.fillStyle = b.groundAlt;
+            X.fillRect(gx, gy, 80, 80);
+          }
+        }
+      }
+      // Biome border hint (subtle line)
+      X.strokeStyle = 'rgba(0,0,0,.08)';
+      X.lineWidth = 2;
+      X.strokeRect(b.x, b.y, b.w, b.h);
+    });
+  } else {
+    // Indoor areas: uniform ground
+    X.fillStyle = A.ground;
+    X.fillRect(0, 0, aw, ah);
+    for (let gx = Math.floor(cam.x/80)*80; gx < cam.x + vw + 80; gx += 80) {
+      for (let gy = Math.floor(cam.y/80)*80; gy < cam.y + vh + 80; gy += 80) {
+        if ((Math.floor(gx/80) + Math.floor(gy/80)) % 2 === 0) {
+          X.fillStyle = A.groundAlt;
+          X.fillRect(gx, gy, 80, 80);
+        }
       }
     }
   }
@@ -1377,20 +1495,6 @@ function drawBuilding(b) {
 
 function drawPortal(p) {
   const pulse = Math.sin(performance.now() * .003) * .3 + .7;
-
-  if (p.edgePortal) {
-    // Edge portals: subtle shimmer at map boundary
-    const cx = p.x + p.w / 2, cy = p.y + p.h / 2;
-    X.save(); X.globalAlpha = .25 * pulse;
-    X.fillStyle = '#ffe080';
-    X.fillRect(p.x, p.y, p.w, p.h);
-    X.restore();
-    // Arrow & label
-    X.font = 'bold 10px Segoe UI'; X.textAlign = 'center';
-    X.fillStyle = `rgba(212,160,23,${.8 * pulse})`;
-    X.fillText(p.label, cx, cy - 6);
-    return;
-  }
 
   if (p.cave) {
     // Cave entrance: dark hole with rocky frame
@@ -2282,14 +2386,15 @@ function render() {
   X.restore();
 
   // ===== WEATHER OVERLAY (screen space) =====
-  if (curArea === 'swamp') {
+  const wBiome = curBiome ? curBiome.id : null;
+  if (wBiome === 'swamp') {
     // Rain
     X.strokeStyle = 'rgba(120,160,180,.25)';
     X.lineWidth = 1;
     weatherDrops.forEach(wd => {
       X.beginPath(); X.moveTo(wd.x, wd.y); X.lineTo(wd.x - 2, wd.y + wd.len); X.stroke();
     });
-  } else if (curArea === 'desert') {
+  } else if (wBiome === 'desert') {
     // Sand wind
     X.globalAlpha = .15;
     X.strokeStyle = '#c0a860';
@@ -2352,6 +2457,34 @@ function render() {
     X.fillRect(0, 0, W, H);
   }
 
+  // ===== BOSS HEALTH BAR =====
+  if (bossActive && bossActive.hp > 0) {
+    const bw = 300, bh = 18, bx = W/2 - bw/2, by = 50;
+    X.fillStyle = 'rgba(0,0,0,.7)';
+    X.fillRect(bx - 4, by - 4, bw + 8, bh + 28);
+    X.strokeStyle = '#d4a017'; X.lineWidth = 2;
+    X.strokeRect(bx - 4, by - 4, bw + 8, bh + 28);
+    // Boss name
+    X.font = 'bold 13px Segoe UI'; X.textAlign = 'center';
+    X.fillStyle = '#ff4444'; X.fillText(`👑 ${bossActive.name || 'БОСС'}`, W/2, by - 8 + 42);
+    // HP bar
+    X.fillStyle = '#333'; X.fillRect(bx, by, bw, bh);
+    const hpPct = Math.max(0, bossActive.hp / bossActive.maxHp);
+    const hpCol = hpPct > .5 ? '#c03020' : (hpPct > .25 ? '#c06020' : '#c02020');
+    X.fillStyle = hpCol; X.fillRect(bx, by, bw * hpPct, bh);
+    X.font = 'bold 11px Segoe UI';
+    X.fillStyle = '#fff';
+    X.fillText(`${Math.ceil(bossActive.hp)} / ${bossActive.maxHp}`, W/2, by + bh - 4);
+  }
+
+  // ===== EVENT BANNER =====
+  if (activeEvent && eventTimer > 0) {
+    X.font = 'bold 14px Segoe UI'; X.textAlign = 'center';
+    const alpha = Math.min(1, eventTimer * 2);
+    X.fillStyle = `rgba(200,160,40,${alpha * .9})`;
+    X.fillText(`${activeEvent.name} — ${Math.ceil(eventTimer)}с`, W/2, 85 + (bossActive ? 50 : 0));
+  }
+
   // ===== VIGNETTE EFFECT =====
   const vigGrd = X.createRadialGradient(W/2, H/2, W*.3, W/2, H/2, W*.75);
   vigGrd.addColorStop(0, 'rgba(0,0,0,0)');
@@ -2368,20 +2501,43 @@ function drawMinimap() {
   const mw = MC.width, mh = MC.height;
   const sx = mw / aw, sy = mh / ah;
   MX.fillStyle = 'rgba(0,0,0,.8)'; MX.fillRect(0, 0, mw, mh);
-  MX.fillStyle = A.ground; MX.globalAlpha = .5; MX.fillRect(0, 0, mw, mh); MX.globalAlpha = 1;
+  if (curArea === 'world') {
+    // Draw biome zones on minimap
+    BIOMES.forEach(b => {
+      MX.fillStyle = b.ground; MX.globalAlpha = .5;
+      MX.fillRect(b.x * sx, b.y * sy, b.w * sx, b.h * sy);
+    });
+    MX.globalAlpha = 1;
+  } else {
+    MX.fillStyle = A.ground; MX.globalAlpha = .5; MX.fillRect(0, 0, mw, mh); MX.globalAlpha = 1;
+  }
   // Buildings
-  buildings.forEach(b => { MX.fillStyle = '#8a7040'; MX.fillRect(b.x * sx, b.y * sy, b.w * sx, b.h * sy); });
+  buildings.forEach(b => {
+    MX.fillStyle = b.type === 'structure' ? '#d4a017' : '#8a7040';
+    MX.fillRect(b.x * sx, b.y * sy, Math.max(2, b.w * sx), Math.max(2, b.h * sy));
+  });
   // Enemies
-  enemies.forEach(e => { if (e.hp > 0) { MX.fillStyle = e.state === 'chase' ? '#f44' : '#a66'; MX.fillRect(e.x * sx - 1, e.y * sy - 1, 3, 3); }});
+  enemies.forEach(e => {
+    if (e.hp > 0) {
+      MX.fillStyle = e.boss ? '#ff0' : (e.state === 'chase' ? '#f44' : '#a66');
+      const sz = e.boss ? 5 : 3;
+      MX.fillRect(e.x * sx - 1, e.y * sy - 1, sz, sz);
+    }
+  });
   // Portals
   portals.forEach(p => {
-    if (p.edgePortal) { MX.fillStyle = 'rgba(212,160,23,.4)'; }
-    else if (p.cave) { MX.fillStyle = '#4a3020'; }
+    if (p.cave) { MX.fillStyle = '#4a3020'; }
     else { MX.fillStyle = '#d4a017'; }
     MX.fillRect(p.x * sx, p.y * sy, Math.max(3, p.w * sx), Math.max(3, p.h * sy));
   });
   // Player
   MX.fillStyle = '#4af'; MX.beginPath(); MX.arc(G.x * sx, G.y * sy, 3, 0, Math.PI * 2); MX.fill();
+  // Biome name
+  if (curBiome) {
+    MX.font = '9px Segoe UI'; MX.textAlign = 'center';
+    MX.fillStyle = '#ddd';
+    MX.fillText(curBiome.name, mw/2, mh - 4);
+  }
   // Border
   MX.strokeStyle = '#5a4a20'; MX.lineWidth = 1; MX.strokeRect(0, 0, mw, mh);
 }
@@ -2525,7 +2681,11 @@ function update(dt) {
     respawnTimers[tid] -= dt;
     if (respawnTimers[tid] <= 0) {
       delete respawnTimers[tid];
-      if (curArea !== 'village') {
+      // Respawn enemies away from player in curBiome area
+      if (curArea === 'world' && curBiome) {
+        const b = curBiome;
+        spawnEnemy(tid, b.x + 100 + rr() * (b.w - 200), b.y + 100 + rr() * (b.h - 200));
+      } else if (curArea !== 'world') {
         spawnEnemy(tid, 200 + rr() * (aw - 400), 200 + rr() * (ah - 400));
       }
     }
@@ -2551,28 +2711,11 @@ function update(dt) {
     }
   }
 
-  // Portal check
+  // Portal check (cave portals only)
   portals.forEach(p => {
     if (G.x > p.x && G.x < p.x + p.w && G.y > p.y && G.y < p.y + p.h) {
-      if (p.edgePortal) {
-        // Seamless edge transition: place player on opposite edge
-        const ta = AREAS[p.to];
-        const taw = ta.w * TW, tah = ta.h * TH;
-        let nx = G.x, ny = G.y;
-        if (p.edge === 'left')   nx = 20;
-        if (p.edge === 'right')  nx = taw - 20;
-        if (p.edge === 'top')    ny = 20;
-        if (p.edge === 'bottom') ny = tah - 20;
-        // Keep Y/X position proportional for side transitions
-        if (p.edge === 'left' || p.edge === 'right') ny = Math.min(tah - 30, Math.max(30, G.y / (AREAS[curArea].h * TH) * tah));
-        if (p.edge === 'top' || p.edge === 'bottom') nx = Math.min(taw - 30, Math.max(30, G.x / (AREAS[curArea].w * TW) * taw));
-        loadArea(p.to);
-        G.x = nx; G.y = ny;
-      } else {
-        // Cave / specific portal: use explicit spawn coords
-        loadArea(p.to);
-        G.x = p.sx; G.y = p.sy;
-      }
+      loadArea(p.to);
+      G.x = p.sx; G.y = p.sy;
       cam.x = G.x - C.width / 2;
       cam.y = G.y - C.height / 2;
     }
@@ -2585,7 +2728,16 @@ function update(dt) {
     const d = Math.hypot(n.x - G.x, n.y - G.y);
     if (d < 55 && d < closestDist) { nearInteract = n; closestDist = d; }
   });
+  // Structure proximity hint
+  let nearStruct = null;
+  if (curArea === 'world') {
+    worldStructures.forEach(s => {
+      const d = Math.hypot(s.x + s.w/2 - G.x, s.y + s.h/2 - G.y);
+      if (d < 120 && d < closestDist) { nearStruct = s; closestDist = d; }
+    });
+  }
   if (nearInteract) showPrompt(`[E] ${nearInteract.name}`);
+  else if (nearStruct) showPrompt(`${nearStruct.icon} ${nearStruct.name} — используйте предмет призыва`);
   else hidePrompt();
 
   // Particles
@@ -2613,17 +2765,19 @@ function update(dt) {
     screenShakeY = (Math.random() - .5) * screenShakeDur * 30;
   } else { screenShakeX = 0; screenShakeY = 0; }
 
-  // Ambient particle spawning per area
+  // Ambient particle spawning per biome
   ambientTimer -= dt;
   if (ambientTimer <= 0) {
     const vw = C.width, vh = C.height;
     const cx = cam.x + vw / 2, cy = cam.y + vh / 2;
-    if (curArea === 'village') {
+    curBiome = (curArea === 'world') ? getBiome(G.x, G.y) : null;
+    const biomeId = curBiome ? curBiome.id : null;
+    if (biomeId === 'village' || biomeId === 'plains') {
       // Fireflies near buildings
       ambientParticles.push({x: cx + (rr()-.5)*vw, y: cy + (rr()-.5)*vh,
         vx:(rr()-.5)*.3, vy:(rr()-.5)*.3, life:180, maxLife:180,
         color:'#ffe080', size:2, type:'firefly', phase: rr()*Math.PI*2});
-    } else if (curArea === 'forest') {
+    } else if (biomeId === 'forest') {
       // Falling leaves
       ambientParticles.push({x: cx + (rr()-.5)*vw, y: cy - vh/2,
         vx: .3 + rr()*.5, vy: .8 + rr()*.5, life:240, maxLife:240,
@@ -2633,7 +2787,7 @@ function update(dt) {
       if (rr() < .3) ambientParticles.push({x: cx + (rr()-.5)*vw, y: cy + (rr()-.5)*vh,
         vx:(rr()-.5)*.2, vy:(rr()-.5)*.2, life:200, maxLife:200,
         color:'#80ff80', size:2.5, type:'firefly', phase: rr()*Math.PI*2});
-    } else if (curArea === 'swamp') {
+    } else if (biomeId === 'swamp') {
       // Fog wisps
       ambientParticles.push({x: cx + (rr()-.5)*vw, y: cy + (rr()-.5)*vh,
         vx: .1 + rr()*.3, vy: (rr()-.5)*.1, life:300, maxLife:300,
@@ -2642,12 +2796,27 @@ function update(dt) {
       if (rr() < .4) ambientParticles.push({x: cx + (rr()-.5)*vw, y: cy + (rr()-.5)*vh,
         vx: 0, vy: -.3 - rr()*.2, life:80, maxLife:80,
         color:'rgba(60,120,60,.4)', size: 2 + rr()*3, type:'bubble'});
-    } else if (curArea === 'desert') {
+    } else if (biomeId === 'desert') {
       // Sand particles
       ambientParticles.push({x: cx - vw/2, y: cy + (rr()-.5)*vh,
         vx: 1.5 + rr()*2, vy: (rr()-.5)*.3, life:160, maxLife:160,
         color:'rgba(180,160,100,.3)', size: 1.5 + rr()*2, type:'sand'});
-    } else if (AREAS[curArea].indoor) {
+    } else if (biomeId === 'mountains') {
+      // Wind dust
+      if (rr() < .5) ambientParticles.push({x: cx + (rr()-.5)*vw, y: cy + (rr()-.5)*vh,
+        vx: .8 + rr()*1, vy: (rr()-.5)*.3, life:140, maxLife:140,
+        color:'rgba(160,150,140,.2)', size: 1.5 + rr()*2, type:'sand'});
+    } else if (biomeId === 'coast') {
+      // Sea spray
+      if (rr() < .5) ambientParticles.push({x: cx + (rr()-.5)*vw, y: cy + (rr()-.5)*vh,
+        vx:(rr()-.5)*.5, vy: -.3 - rr()*.3, life:100, maxLife:100,
+        color:'rgba(150,200,220,.25)', size: 2 + rr()*2, type:'bubble'});
+    } else if (biomeId === 'castle') {
+      // Banner dust / sparkle
+      if (rr() < .5) ambientParticles.push({x: cx + (rr()-.5)*vw, y: cy + (rr()-.5)*vh,
+        vx:(rr()-.5)*.3, vy: -.2 - rr()*.2, life:120, maxLife:120,
+        color:'rgba(200,180,100,.3)', size: 2 + rr()*2, type:'sparkle'});
+    } else if (AREAS[curArea] && AREAS[curArea].indoor) {
       // Floating embers (indoor areas)
       ambientParticles.push({x: cx + (rr()-.5)*vw, y: cy + vh/2,
         vx:(rr()-.5)*.5, vy: -.5 - rr()*.5, life:200, maxLife:200,
@@ -2656,13 +2825,8 @@ function update(dt) {
       if (rr() < .4) ambientParticles.push({x: cx + (rr()-.5)*vw, y: cy + (rr()-.5)*vh,
         vx:(rr()-.5)*.2, vy:(rr()-.5)*.1, life:250, maxLife:250,
         color:'rgba(160,140,120,.2)', size: 1 + rr()*1.5, type:'dust'});
-    } else if (curArea === 'castle') {
-      // Banner flags dust / sparkle
-      if (rr() < .5) ambientParticles.push({x: cx + (rr()-.5)*vw, y: cy + (rr()-.5)*vh,
-        vx:(rr()-.5)*.3, vy: -.2 - rr()*.2, life:120, maxLife:120,
-        color:'rgba(200,180,100,.3)', size: 2 + rr()*2, type:'sparkle'});
     }
-    ambientTimer = curArea === 'desert' ? .05 : .15;
+    ambientTimer = biomeId === 'desert' ? .05 : .15;
   }
 
   // Update ambient particles
@@ -2681,12 +2845,13 @@ function update(dt) {
   // Cap ambient particles
   if (ambientParticles.length > 80) ambientParticles.splice(0, ambientParticles.length - 80);
 
-  // Weather drops (rain in swamp, sandstorm in desert)
-  if (curArea === 'swamp' || curArea === 'desert') {
+  // Weather drops (rain in swamp biome, sandstorm in desert biome)
+  const biomeForWeather = curBiome ? curBiome.id : null;
+  if (biomeForWeather === 'swamp' || biomeForWeather === 'desert') {
     weatherTimer -= dt;
     if (weatherTimer <= 0) {
       for (let i = 0; i < 3; i++) {
-        if (curArea === 'swamp') {
+        if (biomeForWeather === 'swamp') {
           weatherDrops.push({x: rr()*C.width, y: -5, vy: 8 + rr()*6, len: 8 + rr()*8, life: 40});
         } else {
           weatherDrops.push({x: -5, y: rr()*C.height, vx: 10 + rr()*8, life: 50});
@@ -2694,7 +2859,7 @@ function update(dt) {
       }
       weatherTimer = .02;
     }
-  } else { weatherDrops = []; }
+  } else if (!AREAS[curArea].indoor) { weatherDrops = []; }
   for (let i = weatherDrops.length - 1; i >= 0; i--) {
     const wd = weatherDrops[i];
     if (wd.vy) wd.y += wd.vy; else wd.x += wd.vx;
@@ -2705,6 +2870,79 @@ function update(dt) {
 
   // Day timer (1 day = 45 seconds)
   dayTimer += dt;
+
+  // ══════════ BIOME HUD UPDATE ══════════
+  if (curArea === 'world') {
+    const newBiome = getBiome(G.x, G.y);
+    if (newBiome && (!curBiome || newBiome.id !== curBiome.id)) {
+      curBiome = newBiome;
+      document.getElementById('hud-loc').textContent = newBiome.name;
+      log(`📍 ${newBiome.name}`, 'li');
+    }
+  }
+
+  // ══════════ RANDOM EVENTS ══════════
+  if (curArea === 'world' && !activeEvent) {
+    eventCooldown -= dt;
+    if (eventCooldown <= 0) {
+      for (const ev of RANDOM_EVENTS) {
+        if (Math.random() < ev.chance * dt) {
+          activeEvent = ev;
+          eventTimer = ev.duration;
+          eventEnemies = [];
+          if (ev.enemies) {
+            ev.enemies.forEach(e => {
+              for (let i = 0; i < e.count; i++) {
+                const ex = G.x + (rr()-.5)*500 + (rr()>.5?200:-200);
+                const ey = G.y + (rr()-.5)*500 + (rr()>.5?200:-200);
+                const en = spawnEnemy(e.type, ex, ey);
+                if (en) eventEnemies.push(en);
+              }
+            });
+          }
+          if (ev.id === 'blood_moon') {
+            enemies.forEach(e => { if (e.hp > 0) { e.hp *= 1.5; e.maxHp *= 1.5; e.atk *= 1.3; } });
+          }
+          if (ev.id === 'treasure') {
+            const tx = G.x + (rr()-.5)*400, ty = G.y + (rr()-.5)*400;
+            for (let i = 0; i < 5; i++) itemsOnGround.push({x:tx+rr()*60, y:ty+rr()*60, type:'gold', value:20+Math.floor(rr()*30)});
+          }
+          if (ev.id === 'wanderer') {
+            npcs.push({x:G.x+200, y:G.y+100, r:11, name:'Странник', color:'#8a7a5a', dialog:'trade', skinColor:'#c09060', hairColor:'#5a4030', gender:'m', temporary:true});
+          }
+          log(`⚡ СОБЫТИЕ: ${ev.name}!`, 'lg');
+          screenShakeDur = .3;
+          eventCooldown = 30;
+          break;
+        }
+      }
+      if (!activeEvent) eventCooldown = 2;
+    }
+  }
+  // Active event timer
+  if (activeEvent) {
+    eventTimer -= dt;
+    if (eventTimer <= 0) {
+      // Clean up event enemies
+      eventEnemies.forEach(e => { const idx = enemies.indexOf(e); if (idx >= 0 && e.hp > 0) enemies.splice(idx, 1); });
+      // Remove temporary NPCs
+      npcs = npcs.filter(n => !n.temporary);
+      log(`⚡ Событие "${activeEvent.name}" завершилось.`, 'li');
+      activeEvent = null; eventEnemies = [];
+    }
+  }
+
+  // ══════════ BOSS CHECK ══════════
+  if (bossActive && bossActive.hp <= 0) {
+    const bt = BOSSES[bossActive.typeId];
+    log(`🏆 БОСС ПОБЕЖДЁН: ${bt ? bt.name : 'Босс'}!`, 'lg');
+    floatText(bossActive.x, bossActive.y - 30, '🏆 БОСС ПОБЕЖДЁН!', '#ff0');
+    // Boss loot
+    for (let i = 0; i < 8; i++) itemsOnGround.push({x:bossActive.x+(rr()-.5)*60, y:bossActive.y+(rr()-.5)*60, type:'gold', value:50+Math.floor(rr()*100)});
+    G.xp += (bt ? bt.xp : 200);
+    screenShakeDur = 1;
+    bossActive = null;
+  }
 
   // Trader inventory refresh timers
   for (const tid in traderRefreshTimers) {
@@ -2985,14 +3223,15 @@ function closeAllOv() { document.querySelectorAll('.ov.show').forEach(o => o.cla
 // ===== SHOP =====
 function getShopItems() {
   const base = [ITEMS.bread, ITEMS.meat, ITEMS.potion, ITEMS.stam_pot, ITEMS.rusty_sword, ITEMS.leather];
-  if (curArea === 'castle') base.push(ITEMS.steel_sword, ITEMS.great_axe, ITEMS.plate, ITEMS.elixir, ITEMS.hero_blade, ITEMS.dragon_armor, ITEMS.dark_scythe);
+  const shopBiome = curBiome ? curBiome.id : null;
+  if (shopBiome === 'castle') base.push(ITEMS.steel_sword, ITEMS.great_axe, ITEMS.plate, ITEMS.elixir, ITEMS.hero_blade, ITEMS.dragon_armor, ITEMS.dark_scythe);
   else base.push(ITEMS.iron_sword, ITEMS.chain);
   return base;
 }
 
 function openShop() {
   shopTab = 'buy'; renderShop(); openOv('ov-shop');
-  document.getElementById('shop-title').textContent = curArea === 'castle' ? '🏰 Королевская Лавка' : '🏪 Лавка';
+  document.getElementById('shop-title').textContent = (curBiome && curBiome.id === 'castle') ? '🏰 Королевская Лавка' : '🏪 Лавка';
 }
 
 function renderShop() {
@@ -3245,6 +3484,18 @@ function openQuestDialog(npc) {
   const isDone = G.questsDone.includes(q.id);
   const isActive = G.quests.includes(q.id);
 
+  // Check prerequisite quest
+  if (q.prereq && !G.questsDone.includes(q.prereq)) {
+    const prereqQ = QUESTS.find(qq => qq.id === q.prereq);
+    let html = `<h2>${q.icon} ${q.name}</h2>`;
+    html += `<p style="color:#aaa;margin:8px 0">${npc.name} говорит:</p>`;
+    html += `<p style="color:#a84;margin:10px 0">«Сначала вам нужно выполнить задание: ${prereqQ ? prereqQ.icon + ' ' + prereqQ.name : q.prereq}»</p>`;
+    html += `<button class="btn" onclick="closeOv('ov-quest')">Понятно</button>`;
+    document.getElementById('quest-content').innerHTML = html;
+    openOv('ov-quest');
+    return;
+  }
+
   let html = `<h2>${q.icon} ${q.name}</h2>`;
   html += `<p style="color:#aaa;margin:8px 0">${npc.name} говорит:</p>`;
 
@@ -3357,6 +3608,16 @@ window.useItem = i => {
     const h = Math.min(it.heal, G.maxStam - G.stamina); G.stamina += h;
     log(`${it.name}: +${h} Стамина`, 'ls');
     it.qty--; if (it.qty <= 0) G.inv.splice(i, 1);
+  } else if (it.type === 'summon') {
+    // Summoning item: check if near a structure
+    if (curArea !== 'world') { log('⚠️ Призвать босса можно только в открытом мире!', 'lw'); openInv(); updateHUD(); return; }
+    if (bossActive) { log('⚠️ Босс уже активен!', 'lw'); openInv(); updateHUD(); return; }
+    const nearStruct = worldStructures.find(s => Math.hypot(s.x + s.w/2 - G.x, s.y + s.h/2 - G.y) < 200);
+    if (!nearStruct) { log('⚠️ Подойдите к структуре (арена, алтарь, руины...) чтобы призвать босса!', 'lw'); openInv(); updateHUD(); return; }
+    const bossId = it.summonBoss;
+    if (spawnBossAtStructure(bossId, nearStruct.structType)) {
+      it.qty--; if (it.qty <= 0) G.inv.splice(i, 1);
+    }
   }
   openInv(); updateHUD();
 };
@@ -3573,7 +3834,7 @@ function openProperties() {
     });
     html += '</div>';
   } else {
-    html += `<p style="color:#777;font-size:12px;margin-bottom:10px">${curArea === 'village' || curArea === 'castle' ? 'Все владения в этой локации уже куплены!' : 'В этой локации нет владений для покупки. Ищите в деревне или замке.'}</p>`;
+    html += `<p style="color:#777;font-size:12px;margin-bottom:10px">${(curBiome && (curBiome.id === 'village' || curBiome.id === 'castle')) ? 'Все владения в этой локации уже куплены!' : 'В этой локации нет владений для покупки. Ищите в деревне или замке.'}</p>`;
   }
 
   // Owned properties
@@ -4248,7 +4509,11 @@ function startGameWithChar(name, gender, cls, skin, hair, body, shape, raceId) {
 
   G.running = true;
   gameStarted = true;
-  loadArea('village');
+  loadArea('world');
+  // Spawn in village biome center
+  const vBiome = BIOMES.find(b=>b.id==='village');
+  G.x = vBiome.x + vBiome.w/2;
+  G.y = vBiome.y + vBiome.h/2;
   cam.x = G.x - C.width / 2;
   cam.y = G.y - C.height / 2;
   log(`🏰 Добро пожаловать, ${name}!`, 'li');
@@ -4256,7 +4521,7 @@ function startGameWithChar(name, gender, cls, skin, hair, body, shape, raceId) {
   log('WASD — движение, ЛКМ — атака по направлению мыши', 'li');
   log('[E] — разговор с NPC, [Shift] — рывок', 'li');
   log('[B] — владения, [P] — отряд и рабы', 'li');
-  log('Исследуйте 6 локаций, торгуйте, покупайте владения!', 'li');
+  log('Исследуйте открытый мир, торгуйте, покупайте владения!', 'li');
   lastTime = performance.now();
 }
 
