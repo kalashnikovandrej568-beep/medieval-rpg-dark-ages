@@ -747,6 +747,130 @@ function drawGround() {
   });
 }
 
+// ── Color helper utilities for realistic rendering ──
+function hexToRgb(hex) {
+  hex = hex.replace('#','');
+  if (hex.length === 3) hex = hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2];
+  return [parseInt(hex.substring(0,2),16), parseInt(hex.substring(2,4),16), parseInt(hex.substring(4,6),16)];
+}
+function rgbToHex(r,g,b) {
+  return '#' + [r,g,b].map(v => Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,'0')).join('');
+}
+function lightenColor(hex, amt) {
+  const [r,g,b] = hexToRgb(hex);
+  return rgbToHex(r+amt, g+amt, b+amt);
+}
+function darkenColor(hex, amt) {
+  const [r,g,b] = hexToRgb(hex);
+  return rgbToHex(r-amt, g-amt, b-amt);
+}
+function blendColor(hex1, hex2, t) {
+  const [r1,g1,b1] = hexToRgb(hex1), [r2,g2,b2] = hexToRgb(hex2);
+  return rgbToHex(r1+(r2-r1)*t, g1+(g2-g1)*t, b1+(b2-b1)*t);
+}
+
+// ── Shared realistic character drawing helper ──
+function drawRealisticHead(ctx, cx, cy, r, skinColor, hairColor, gender, hasEyelashes) {
+  const isFemale = gender === 'f';
+  // Head with gradient
+  const hg = ctx.createRadialGradient(cx - r*.25, cy - r*.2, r*.1, cx, cy, r);
+  hg.addColorStop(0, lightenColor(skinColor, 25));
+  hg.addColorStop(0.7, skinColor);
+  hg.addColorStop(1, darkenColor(skinColor, 20));
+  ctx.fillStyle = hg;
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.fill();
+  // Ears
+  ctx.fillStyle = darkenColor(skinColor, 8);
+  ctx.beginPath(); ctx.ellipse(cx - r*.95, cy, r*.14, r*.24, 0, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(cx + r*.95, cy, r*.14, r*.24, 0, 0, Math.PI*2); ctx.fill();
+}
+
+function drawRealisticFace(ctx, cx, cy, r, isFemale, irisColor) {
+  irisColor = irisColor || '#4a6a40';
+  // Eyebrows
+  ctx.strokeStyle = 'rgba(40,30,20,.6)';
+  ctx.lineWidth = Math.max(1, r * .12);
+  ctx.beginPath(); ctx.moveTo(cx - r*.55, cy - r*.3); ctx.quadraticCurveTo(cx - r*.35, cy - r*.42, cx - r*.15, cy - r*.34); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx + r*.15, cy - r*.34); ctx.quadraticCurveTo(cx + r*.35, cy - r*.42, cx + r*.55, cy - r*.3); ctx.stroke();
+  // Eye whites
+  const ew = r * .22, eh = r * .15;
+  const ey = cy - r * .12;
+  ctx.fillStyle = '#f5f0eb';
+  ctx.beginPath(); ctx.ellipse(cx - r*.32, ey, ew, eh, 0, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(cx + r*.32, ey, ew, eh, 0, 0, Math.PI*2); ctx.fill();
+  // Eye outline
+  ctx.strokeStyle = 'rgba(60,40,30,.3)';
+  ctx.lineWidth = Math.max(.5, r * .04);
+  ctx.beginPath(); ctx.ellipse(cx - r*.32, ey, ew, eh, 0, 0, Math.PI*2); ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(cx + r*.32, ey, ew, eh, 0, 0, Math.PI*2); ctx.stroke();
+  // Iris
+  ctx.fillStyle = irisColor;
+  ctx.beginPath(); ctx.arc(cx - r*.32, ey + .5, eh*.72, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + r*.32, ey + .5, eh*.72, 0, Math.PI*2); ctx.fill();
+  // Pupil
+  ctx.fillStyle = '#111';
+  ctx.beginPath(); ctx.arc(cx - r*.32, ey + .5, eh*.35, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + r*.32, ey + .5, eh*.35, 0, Math.PI*2); ctx.fill();
+  // Highlight
+  ctx.fillStyle = 'rgba(255,255,255,.7)';
+  ctx.beginPath(); ctx.arc(cx - r*.36, ey - .5, eh*.2, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + r*.28, ey - .5, eh*.2, 0, Math.PI*2); ctx.fill();
+  // Eyelashes for females
+  if (isFemale) {
+    ctx.strokeStyle = '#222'; ctx.lineWidth = Math.max(.6, r*.05);
+    ctx.beginPath(); ctx.arc(cx - r*.32, ey, ew*1.05, Math.PI*1.05, Math.PI*1.95); ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx + r*.32, ey, ew*1.05, Math.PI*1.05, Math.PI*1.95); ctx.stroke();
+  }
+  // Nose
+  ctx.fillStyle = 'rgba(0,0,0,.06)';
+  ctx.beginPath(); ctx.moveTo(cx, cy + r*.02); ctx.lineTo(cx - r*.08, cy + r*.2); ctx.lineTo(cx + r*.08, cy + r*.2); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,.08)';
+  ctx.beginPath(); ctx.arc(cx - r*.04, cy + r*.2, r*.04, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + r*.04, cy + r*.2, r*.04, 0, Math.PI*2); ctx.fill();
+  // Mouth
+  if (isFemale) {
+    ctx.fillStyle = '#c07060';
+    ctx.beginPath(); ctx.ellipse(cx, cy + r*.38, r*.14, r*.055, 0, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.15)';
+    ctx.beginPath(); ctx.ellipse(cx, cy + r*.36, r*.06, r*.02, 0, 0, Math.PI*2); ctx.fill();
+  } else {
+    ctx.strokeStyle = '#8a6050'; ctx.lineWidth = Math.max(.7, r*.05);
+    ctx.beginPath(); ctx.arc(cx, cy + r*.32, r*.12, .15, Math.PI - .15); ctx.stroke();
+  }
+}
+
+function drawRealisticHair(ctx, cx, cy, r, hairColor, isFemale) {
+  const hg = ctx.createRadialGradient(cx - r*.3, cy - r*.5, r*.1, cx, cy, r*1.2);
+  hg.addColorStop(0, lightenColor(hairColor, 22));
+  hg.addColorStop(0.6, hairColor);
+  hg.addColorStop(1, darkenColor(hairColor, 15));
+  ctx.fillStyle = hg;
+  if (isFemale) {
+    ctx.beginPath(); ctx.arc(cx, cy - r*.12, r*1.08, Math.PI, Math.PI*2); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(cx - r*1.1, cy - r*.12);
+    ctx.quadraticCurveTo(cx - r*1.15, cy + r*.8, cx - r*.85, cy + r*1.7);
+    ctx.lineTo(cx - r*.65, cy + r*1.7);
+    ctx.quadraticCurveTo(cx - r*.8, cy + r*.5, cx - r*.82, cy - r*.12);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(cx + r*1.1, cy - r*.12);
+    ctx.quadraticCurveTo(cx + r*1.15, cy + r*.8, cx + r*.85, cy + r*1.7);
+    ctx.lineTo(cx + r*.65, cy + r*1.7);
+    ctx.quadraticCurveTo(cx + r*.8, cy + r*.5, cx + r*.82, cy - r*.12);
+    ctx.fill();
+    ctx.fillRect(cx - r*1.06, cy - r*.18, r*2.12, r*.22);
+    // Hair shine
+    ctx.fillStyle = 'rgba(255,255,255,.08)';
+    ctx.beginPath(); ctx.ellipse(cx - r*.25, cy - r*.55, r*.35, r*.12, -.15, 0, Math.PI*2); ctx.fill();
+  } else {
+    ctx.beginPath(); ctx.arc(cx, cy - r*.12, r*1.04, Math.PI*.82, Math.PI*2.18); ctx.fill();
+    ctx.fillRect(cx - r, cy - r*.18, r*2, r*.28);
+    ctx.fillStyle = 'rgba(255,255,255,.06)';
+    ctx.beginPath(); ctx.ellipse(cx - r*.2, cy - r*.5, r*.3, r*.12, -.2, 0, Math.PI*2); ctx.fill();
+  }
+}
+
 function drawTree(t) {
   const {x, y, s, type} = t;
   // Shadow
@@ -879,79 +1003,231 @@ function drawPortal(p) {
 }
 
 function drawNPC(n) {
+  const nx = n.x, ny = n.y, r = n.r;
+  const headR = r * .55;
+  const headY = ny - r * .65;
+  const skinCol = n.skinColor || '#d4b088';
+  const hairCol = n.hairColor || '#4a3020';
+  const npcGender = n.gender || 'm';
+  const isFemale = npcGender === 'f';
+
   // Shadow
-  X.fillStyle = 'rgba(0,0,0,.2)';
-  X.beginPath(); X.ellipse(n.x, n.y + n.r, n.r * .8, n.r * .3, 0, 0, Math.PI * 2); X.fill();
-  // Body
-  X.fillStyle = n.color;
-  X.beginPath(); X.arc(n.x, n.y, n.r, 0, Math.PI * 2); X.fill();
-  X.strokeStyle = 'rgba(0,0,0,.2)'; X.lineWidth = 1; X.stroke();
-  // Head
-  X.fillStyle = '#d4b088';
-  X.beginPath(); X.arc(n.x, n.y - n.r * .7, n.r * .55, 0, Math.PI * 2); X.fill();
-  // Eyes
-  X.fillStyle = '#333';
-  X.beginPath(); X.arc(n.x - 3, n.y - n.r * .8, 1.5, 0, Math.PI * 2); X.fill();
-  X.beginPath(); X.arc(n.x + 3, n.y - n.r * .8, 1.5, 0, Math.PI * 2); X.fill();
+  X.fillStyle = 'rgba(0,0,0,.25)';
+  X.beginPath(); X.ellipse(nx, ny + r + 3, r * .9, r * .22, 0, 0, Math.PI * 2); X.fill();
+
+  // Legs
+  const legW = 3, legH = 6;
+  X.fillStyle = '#3a2a18';
+  X.fillRect(nx - legW * 1.2, ny + r - 2, legW, legH);
+  X.fillRect(nx + legW * .2, ny + r - 2, legW, legH);
+  // Boots
+  X.fillStyle = '#2a1a0a';
+  X.fillRect(nx - legW * 1.2 - 1, ny + r + legH - 3, legW + 2, 3);
+  X.fillRect(nx + legW * .2 - 1, ny + r + legH - 3, legW + 2, 3);
+
+  // Body with gradient
+  const bg = X.createRadialGradient(nx - r*.2, ny - r*.15, 0, nx, ny, r*1.1);
+  bg.addColorStop(0, lightenColor(n.color, 28));
+  bg.addColorStop(0.6, n.color);
+  bg.addColorStop(1, darkenColor(n.color, 22));
+  X.fillStyle = bg;
+  if (isFemale) {
+    X.beginPath();
+    X.ellipse(nx, ny - r*.1, r*.8, r*.55, 0, 0, Math.PI*2); X.fill();
+    X.beginPath();
+    X.ellipse(nx, ny + r*.25, r*.85, r*.45, 0, 0, Math.PI*2); X.fill();
+  } else {
+    X.beginPath();
+    X.moveTo(nx - r*.9, ny - r*.45);
+    X.bezierCurveTo(nx - r, ny + r*.1, nx - r*.65, ny + r*.5, nx - r*.6, ny + r*.55);
+    X.lineTo(nx + r*.6, ny + r*.55);
+    X.bezierCurveTo(nx + r*.65, ny + r*.5, nx + r, ny + r*.1, nx + r*.9, ny - r*.45);
+    X.closePath(); X.fill();
+  }
+  // Collar
+  X.strokeStyle = 'rgba(0,0,0,.12)'; X.lineWidth = 1;
+  X.beginPath(); X.arc(nx, ny - r*.35, r*.35, Math.PI*.2, Math.PI*.8); X.stroke();
+  // Belt
+  X.fillStyle = '#4a3020';
+  X.fillRect(nx - r*.7, ny + r*.35, r*1.4, 2.5);
+  X.fillStyle = '#d4a017';
+  X.fillRect(nx - 2, ny + r*.35, 4, 2.5);
+
+  // Arms
+  const armW = 3, armH = 8;
+  X.fillStyle = skinCol;
+  X.save(); X.translate(nx - r*.85, ny - r*.2);
+  X.fillRect(-armW/2, 0, armW, armH);
+  X.beginPath(); X.arc(0, armH, armW*.5, 0, Math.PI*2); X.fill();
+  X.restore();
+  X.save(); X.translate(nx + r*.85, ny - r*.2);
+  X.fillRect(-armW/2, 0, armW, armH);
+  X.beginPath(); X.arc(0, armH, armW*.5, 0, Math.PI*2); X.fill();
+  X.restore();
+
+  // Neck
+  X.fillStyle = skinCol;
+  X.fillRect(nx - 2, headY + headR*.6, 4, 4);
+
+  // Head, hair, face using shared helpers
+  drawRealisticHead(X, nx, headY, headR, skinCol, hairCol, npcGender);
+  drawRealisticHair(X, nx, headY, headR, hairCol, isFemale);
+  drawRealisticFace(X, nx, headY, headR, isFemale, '#5a7a50');
+
   // Name
   X.font = 'bold 11px Segoe UI'; X.textAlign = 'center';
-  X.fillStyle = '#000'; X.fillText(n.name, n.x + 1, n.y - n.r - 7);
-  X.fillStyle = '#d4a017'; X.fillText(n.name, n.x, n.y - n.r - 8);
+  X.fillStyle = '#000'; X.fillText(n.name, nx + 1, headY - headR - 5);
+  X.fillStyle = '#d4a017'; X.fillText(n.name, nx, headY - headR - 6);
   // Interact hint
-  const dist = Math.hypot(n.x - G.x, n.y - G.y);
+  const dist = Math.hypot(nx - G.x, ny - G.y);
   if (dist < 60) {
     const blink = Math.sin(performance.now() * .005) * .2 + .8;
     X.font = 'bold 14px Segoe UI';
     X.fillStyle = `rgba(212,160,23,${blink})`;
-    X.fillText('[E]', n.x, n.y - n.r - 22);
+    X.fillText('[E]', nx, headY - headR - 20);
   }
 }
 
 function drawEnemy(e) {
   if (e.hp <= 0) return;
   const ex = e.x + e.knockX, ey = e.y + e.knockY;
+  const r = e.r;
   e.walkCycle += (e.state === 'chase' ? .15 : e.state === 'wander' ? .08 : 0);
   const bob = Math.sin(e.walkCycle) * 2 * (e.state !== 'idle' ? 1 : 0);
+  const legAnim = Math.sin(e.walkCycle * 2) * 3 * (e.state !== 'idle' ? 1 : 0);
 
   // Shadow
-  X.fillStyle = 'rgba(0,0,0,.25)';
-  X.beginPath(); X.ellipse(ex, ey + e.r + 2, e.r * .9, e.r * .3, 0, 0, Math.PI * 2); X.fill();
+  X.fillStyle = 'rgba(0,0,0,.3)';
+  X.beginPath(); X.ellipse(ex, ey + r + 3, r * .95, r * .22, 0, 0, Math.PI * 2); X.fill();
 
   // Flash
   if (e.flashTimer > 0) { X.globalAlpha = .5 + Math.sin(e.flashTimer * 10) * .5; }
 
-  // Body (two-tone for depth)
-  X.fillStyle = e.color1;
-  X.beginPath(); X.arc(ex, ey + bob, e.r, 0, Math.PI * 2); X.fill();
-  X.fillStyle = e.color2;
-  X.beginPath(); X.arc(ex - e.r * .15, ey - e.r * .15 + bob, e.r * .7, 0, Math.PI * 2); X.fill();
-
-  // Legs (if moving)
-  if (e.state !== 'idle') {
-    const legOff = Math.sin(e.walkCycle * 2) * 3;
-    X.fillStyle = e.color1;
-    X.fillRect(ex - e.r * .4, ey + e.r - 2 + legOff, 3, 5);
-    X.fillRect(ex + e.r * .2, ey + e.r - 2 - legOff, 3, 5);
-  }
-
-  // Eyes
-  const eyeCol = e.state === 'chase' ? '#ff2020' : '#ffcc00';
   if (e.human) {
-    // Human-like face
-    X.fillStyle = '#d0a878';
-    X.beginPath(); X.arc(ex, ey - e.r * .4 + bob, e.r * .45, 0, Math.PI * 2); X.fill();
+    // ── Human enemy: full humanoid rendering ──
+    const headR = r * .45;
+    const headY = ey - r * .55 + bob;
+    const skinCol = e.skinColor || '#c8a070';
+    const hairCol = e.hairColor || '#3a2a20';
+    const eyeCol = e.state === 'chase' ? '#cc2020' : '#5a4030';
+
+    // Legs
+    const legW = 3, legH = 6;
+    X.fillStyle = '#3a2a18';
+    X.fillRect(ex - legW * 1.2, ey + r - 2 + legAnim, legW, legH);
+    X.fillRect(ex + legW * .2, ey + r - 2 - legAnim, legW, legH);
+    X.fillStyle = '#2a1a0a';
+    X.fillRect(ex - legW * 1.2 - 1, ey + r + legH - 3 + legAnim, legW + 2, 3);
+    X.fillRect(ex + legW * .2 - 1, ey + r + legH - 3 - legAnim, legW + 2, 3);
+
+    // Body with gradient
+    const bg = X.createRadialGradient(ex - r*.2, ey - r*.1 + bob, 0, ex, ey + bob, r);
+    bg.addColorStop(0, lightenColor(e.color1, 20));
+    bg.addColorStop(0.65, e.color1);
+    bg.addColorStop(1, darkenColor(e.color1, 25));
+    X.fillStyle = bg;
+    X.beginPath();
+    X.moveTo(ex - r*.85, ey - r*.45 + bob);
+    X.bezierCurveTo(ex - r*.95, ey + r*.1 + bob, ex - r*.6, ey + r*.4 + bob, ex - r*.55, ey + r*.5 + bob);
+    X.lineTo(ex + r*.55, ey + r*.5 + bob);
+    X.bezierCurveTo(ex + r*.6, ey + r*.4 + bob, ex + r*.95, ey + r*.1 + bob, ex + r*.85, ey - r*.45 + bob);
+    X.closePath(); X.fill();
+    // Clothing detail
+    X.strokeStyle = 'rgba(0,0,0,.12)'; X.lineWidth = .8;
+    X.beginPath(); X.arc(ex, ey - r*.3 + bob, r*.3, Math.PI*.2, Math.PI*.8); X.stroke();
+    // Belt
+    X.fillStyle = '#3a2518';
+    X.fillRect(ex - r*.6, ey + r*.3 + bob, r*1.2, 2.5);
+
+    // Arms
+    X.fillStyle = skinCol;
+    X.save(); X.translate(ex - r*.8, ey - r*.2 + bob); X.rotate(-legAnim*.04);
+    X.fillRect(-1.5, 0, 3, 8);
+    X.beginPath(); X.arc(0, 8, 1.5, 0, Math.PI*2); X.fill();
+    X.restore();
+    X.save(); X.translate(ex + r*.8, ey - r*.2 + bob); X.rotate(legAnim*.04);
+    X.fillRect(-1.5, 0, 3, 8);
+    X.beginPath(); X.arc(0, 8, 1.5, 0, Math.PI*2); X.fill();
+    X.restore();
+
+    // Weapon hint
+    X.strokeStyle = '#888'; X.lineWidth = 1.5; X.lineCap = 'round';
+    X.beginPath(); X.moveTo(ex + r*.7, ey + bob); X.lineTo(ex + r*1.1, ey - r*.5 + bob); X.stroke();
+
+    // Neck
+    X.fillStyle = skinCol;
+    X.fillRect(ex - 2, headY + headR*.5, 4, 4);
+
+    // Head
+    drawRealisticHead(X, ex, headY, headR, skinCol, hairCol, 'm');
+    drawRealisticHair(X, ex, headY, headR, hairCol, false);
+    // Menacing face
+    // Eyebrows (angry)
+    X.strokeStyle = 'rgba(40,30,20,.7)'; X.lineWidth = Math.max(1, headR*.13);
+    X.beginPath(); X.moveTo(ex - headR*.55, headY - headR*.2); X.lineTo(ex - headR*.15, headY - headR*.35); X.stroke();
+    X.beginPath(); X.moveTo(ex + headR*.15, headY - headR*.35); X.lineTo(ex + headR*.55, headY - headR*.2); X.stroke();
+    // Eyes
+    const ew2 = headR*.22, eh2 = headR*.14;
+    const ey2 = headY - headR*.1;
+    X.fillStyle = '#f5ede5';
+    X.beginPath(); X.ellipse(ex - headR*.3, ey2, ew2, eh2, 0, 0, Math.PI*2); X.fill();
+    X.beginPath(); X.ellipse(ex + headR*.3, ey2, ew2, eh2, 0, 0, Math.PI*2); X.fill();
     X.fillStyle = eyeCol;
-    X.beginPath(); X.arc(ex - e.r * .15, ey - e.r * .5 + bob, 2, 0, Math.PI * 2); X.fill();
-    X.beginPath(); X.arc(ex + e.r * .15, ey - e.r * .5 + bob, 2, 0, Math.PI * 2); X.fill();
-  } else {
-    X.fillStyle = eyeCol;
-    const eyeOff = e.r * .3;
-    X.beginPath(); X.arc(ex - eyeOff, ey - e.r * .15 + bob, 2.5, 0, Math.PI * 2); X.fill();
-    X.beginPath(); X.arc(ex + eyeOff, ey - e.r * .15 + bob, 2.5, 0, Math.PI * 2); X.fill();
-    // Pupils
+    X.beginPath(); X.arc(ex - headR*.3, ey2, eh2*.65, 0, Math.PI*2); X.fill();
+    X.beginPath(); X.arc(ex + headR*.3, ey2, eh2*.65, 0, Math.PI*2); X.fill();
     X.fillStyle = '#111';
-    X.beginPath(); X.arc(ex - eyeOff, ey - e.r * .15 + bob, 1, 0, Math.PI * 2); X.fill();
-    X.beginPath(); X.arc(ex + eyeOff, ey - e.r * .15 + bob, 1, 0, Math.PI * 2); X.fill();
+    X.beginPath(); X.arc(ex - headR*.3, ey2, eh2*.3, 0, Math.PI*2); X.fill();
+    X.beginPath(); X.arc(ex + headR*.3, ey2, eh2*.3, 0, Math.PI*2); X.fill();
+    // Scowl mouth
+    X.strokeStyle = '#5a3a2a'; X.lineWidth = .8;
+    X.beginPath(); X.arc(ex, headY + headR*.4, headR*.12, Math.PI + .2, -0.2); X.stroke();
+  } else {
+    // ── Monster enemy (non-human): menacing creature ──
+    // Legs
+    X.fillStyle = darkenColor(e.color1, 20);
+    X.fillRect(ex - r * .4, ey + r - 2 + legAnim, 3.5, 6);
+    X.fillRect(ex + r * .15, ey + r - 2 - legAnim, 3.5, 6);
+
+    // Body with gradient
+    const mbg = X.createRadialGradient(ex - r*.2, ey - r*.15 + bob, r*.1, ex, ey + bob, r);
+    mbg.addColorStop(0, lightenColor(e.color2, 15));
+    mbg.addColorStop(0.5, e.color2);
+    mbg.addColorStop(1, darkenColor(e.color1, 10));
+    X.fillStyle = mbg;
+    X.beginPath(); X.arc(ex, ey + bob, r, 0, Math.PI * 2); X.fill();
+    // Body texture
+    X.fillStyle = 'rgba(0,0,0,.06)';
+    for (let i = 0; i < 3; i++) {
+      X.beginPath(); X.ellipse(ex + (i-1)*r*.3, ey + (i%2 - .5)*r*.3 + bob, r*.15, r*.1, i*.5, 0, Math.PI*2); X.fill();
+    }
+
+    // Monster eyes (glowing)
+    const eyeCol = e.state === 'chase' ? '#ff2020' : '#ffcc00';
+    const eOff = r * .3;
+    // Eye glow
+    const eg = X.createRadialGradient(ex - eOff, ey - r*.15 + bob, 0, ex - eOff, ey - r*.15 + bob, 5);
+    eg.addColorStop(0, eyeCol);
+    eg.addColorStop(1, 'rgba(0,0,0,0)');
+    X.fillStyle = eg;
+    X.beginPath(); X.arc(ex - eOff, ey - r*.15 + bob, 5, 0, Math.PI*2); X.fill();
+    const eg2 = X.createRadialGradient(ex + eOff, ey - r*.15 + bob, 0, ex + eOff, ey - r*.15 + bob, 5);
+    eg2.addColorStop(0, eyeCol);
+    eg2.addColorStop(1, 'rgba(0,0,0,0)');
+    X.fillStyle = eg2;
+    X.beginPath(); X.arc(ex + eOff, ey - r*.15 + bob, 5, 0, Math.PI*2); X.fill();
+    // Eye core
+    X.fillStyle = eyeCol;
+    X.beginPath(); X.ellipse(ex - eOff, ey - r*.15 + bob, 3, 2.2, 0, 0, Math.PI*2); X.fill();
+    X.beginPath(); X.ellipse(ex + eOff, ey - r*.15 + bob, 3, 2.2, 0, 0, Math.PI*2); X.fill();
+    X.fillStyle = '#111';
+    X.beginPath(); X.arc(ex - eOff, ey - r*.15 + bob, 1, 0, Math.PI*2); X.fill();
+    X.beginPath(); X.arc(ex + eOff, ey - r*.15 + bob, 1, 0, Math.PI*2); X.fill();
+    // Fangs
+    X.fillStyle = '#eee';
+    X.beginPath(); X.moveTo(ex - r*.15, ey + r*.15 + bob);
+    X.lineTo(ex - r*.1, ey + r*.35 + bob); X.lineTo(ex - r*.05, ey + r*.15 + bob); X.fill();
+    X.beginPath(); X.moveTo(ex + r*.05, ey + r*.15 + bob);
+    X.lineTo(ex + r*.1, ey + r*.35 + bob); X.lineTo(ex + r*.15, ey + r*.15 + bob); X.fill();
   }
 
   X.globalAlpha = 1;
@@ -959,21 +1235,25 @@ function drawEnemy(e) {
   // Aggro indicator
   if (e.state === 'chase') {
     X.fillStyle = '#ff3333';
-    X.font = '12px Arial'; X.textAlign = 'center';
-    X.fillText('!', ex, ey - e.r - 14);
+    X.font = 'bold 12px Arial'; X.textAlign = 'center';
+    X.fillText('!', ex, ey - r - 14);
   }
 
   // HP bar
   if (e.hp < e.maxHp) {
-    const bw = e.r * 2.5, bh = 4;
-    X.fillStyle = 'rgba(0,0,0,.7)'; X.fillRect(ex - bw / 2 - 1, ey - e.r - 9, bw + 2, bh + 2);
+    const bw = r * 2.5, bh = 4;
+    X.fillStyle = 'rgba(0,0,0,.7)'; X.fillRect(ex - bw / 2 - 1, ey - r - 9, bw + 2, bh + 2);
     const ratio = e.hp / e.maxHp;
-    X.fillStyle = ratio > .5 ? '#2a2' : ratio > .25 ? '#aa2' : '#c22';
-    X.fillRect(ex - bw / 2, ey - e.r - 8, bw * ratio, bh);
+    const hpGrad = X.createLinearGradient(ex - bw/2, 0, ex - bw/2 + bw * ratio, 0);
+    hpGrad.addColorStop(0, ratio > .5 ? '#2d2' : ratio > .25 ? '#cc2' : '#d33');
+    hpGrad.addColorStop(1, ratio > .5 ? '#1a1' : ratio > .25 ? '#991' : '#a11');
+    X.fillStyle = hpGrad;
+    X.fillRect(ex - bw / 2, ey - r - 8, bw * ratio, bh);
   }
   // Name
-  X.font = '10px Segoe UI'; X.textAlign = 'center'; X.fillStyle = '#bbb';
-  X.fillText(e.name, ex, ey - e.r - 16);
+  X.font = '10px Segoe UI'; X.textAlign = 'center';
+  X.fillStyle = '#000'; X.fillText(e.name, ex + 1, ey - r - 17);
+  X.fillStyle = '#ccc'; X.fillText(e.name, ex, ey - r - 18);
 }
 
 function drawPlayer() {
@@ -992,86 +1272,124 @@ function drawPlayer() {
   const fLegs = 0.8 + (sh.legs / 100) * 0.4;
   const isFemale = G.gender === 'f';
 
+  const bodyR = G.r * (1 + fF * 0.25);
+  const bodyRx = bodyR * (isFemale ? 0.85 : 1) * fW;
+  const bodyRy = bodyR * (isFemale ? 1.1 : 0.95 + fF * 0.1) * fH;
+  const headR = G.r * .55 * fHead;
+  const headY = py - bodyRy * .55 + bob;
+
   // Shadow
-  X.fillStyle = 'rgba(0,0,0,.25)';
-  X.beginPath(); X.ellipse(px, py + G.r + 2, G.r * fW, G.r * .3, 0, 0, Math.PI * 2); X.fill();
+  X.fillStyle = 'rgba(0,0,0,.3)';
+  X.beginPath(); X.ellipse(px, py + G.r + 3, G.r * fW * 1.1, G.r * .22, 0, 0, Math.PI * 2); X.fill();
 
   if (G.invincible > 0 && Math.floor(G.invincible / 4) % 2 === 0) X.globalAlpha = .4;
 
-  // Legs — scaled by body shape
-  const legW = 3 + fF * 2 + fM * 1.5;
-  const legH = 8 * fLegs;
-  X.fillStyle = '#3a2a18';
-  X.fillRect(px - legW * 1.2, py + 6 + legAnim, legW, legH);
-  X.fillRect(px + legW * 0.2, py + 6 - legAnim, legW, legH);
+  // Legs with gradient
+  const legW = 3.5 + fF * 2.5 + fM * 1.5;
+  const legH = 9 * fLegs;
+  const legGrad = X.createLinearGradient(px, py + 6, px, py + 6 + legH);
+  legGrad.addColorStop(0, '#4a3520');
+  legGrad.addColorStop(0.7, '#3a2a18');
+  legGrad.addColorStop(1, '#2a1a0a');
+  X.fillStyle = legGrad;
+  X.fillRect(px - legW * 1.3, py + 5 + legAnim, legW, legH);
+  X.fillRect(px + legW * 0.3, py + 5 - legAnim, legW, legH);
   // Boots
   X.fillStyle = '#2a1a0a';
-  X.fillRect(px - legW * 1.2 - 1, py + 5 + legH + legAnim, legW + 2, 3);
-  X.fillRect(px + legW * 0.2 - 1, py + 5 + legH - legAnim, legW + 2, 3);
+  X.fillRect(px - legW * 1.3 - 1, py + 4 + legH + legAnim, legW + 2, 4);
+  X.fillRect(px + legW * 0.3 - 1, py + 4 + legH - legAnim, legW + 2, 4);
 
-  // Body with armor — shaped by character creation
-  const bodyR = G.r * (1 + fF * 0.25);
-  const bodyRx = bodyR * (isFemale ? 0.9 : 1);
-  const bodyRy = bodyR * (isFemale ? 1.05 : 0.95 + fF * 0.1);
-  if (G.armor) {
-    X.fillStyle = G.armor.id === 'dragon_armor' ? '#4a5a6a' : G.armor.id === 'plate' ? '#6a7a8a' : G.armor.id === 'chain' ? '#7a7a7a' : '#6a5a3a';
-    X.beginPath(); X.ellipse(px, py + bob, bodyRx, bodyRy, 0, 0, Math.PI * 2); X.fill();
-    X.strokeStyle = 'rgba(200,200,200,.3)'; X.lineWidth = 1.5; X.stroke();
-    X.fillStyle = 'rgba(255,255,255,.08)';
-    X.beginPath(); X.arc(px - 3, py - 3 + bob, bodyR * .5, 0, Math.PI * 2); X.fill();
+  // Neck
+  X.fillStyle = G.headColor;
+  X.fillRect(px - 2.5, headY + headR * .5, 5, 5);
+
+  // Body torso with gradient and shaped silhouette
+  const armorColor = G.armor ? (G.armor.id === 'dragon_armor' ? '#4a5a6a' : G.armor.id === 'plate' ? '#6a7a8a' : G.armor.id === 'chain' ? '#7a7a7a' : '#6a5a3a') : G.bodyColor;
+  const bodyGrad = X.createRadialGradient(px - bodyRx * .3, py - bodyRy * .2 + bob, 0, px, py + bob, bodyRx * 1.2);
+  bodyGrad.addColorStop(0, lightenColor(armorColor, 30));
+  bodyGrad.addColorStop(0.6, armorColor);
+  bodyGrad.addColorStop(1, darkenColor(armorColor, 25));
+  X.fillStyle = bodyGrad;
+  if (isFemale) {
+    // Feminine hourglass torso
+    X.beginPath();
+    X.moveTo(px - bodyRx * .85, py - bodyRy * .5 + bob);
+    X.bezierCurveTo(px - bodyRx, py - bodyRy * .2 + bob, px - bodyRx * .55, py + bob, px - bodyRx * .8, py + bodyRy * .45 + bob);
+    X.lineTo(px + bodyRx * .8, py + bodyRy * .45 + bob);
+    X.bezierCurveTo(px + bodyRx * .55, py + bob, px + bodyRx, py - bodyRy * .2 + bob, px + bodyRx * .85, py - bodyRy * .5 + bob);
+    X.closePath(); X.fill();
   } else {
-    X.fillStyle = G.bodyColor;
-    X.beginPath(); X.ellipse(px, py + bob, bodyRx, bodyRy, 0, 0, Math.PI * 2); X.fill();
+    // Masculine broad shoulders tapering down
+    X.beginPath();
+    X.moveTo(px - bodyRx * .95, py - bodyRy * .5 + bob);
+    X.bezierCurveTo(px - bodyRx * 1.05, py - bodyRy * .1 + bob, px - bodyRx * .65, py + bodyRy * .3 + bob, px - bodyRx * .65, py + bodyRy * .5 + bob);
+    X.lineTo(px + bodyRx * .65, py + bodyRy * .5 + bob);
+    X.bezierCurveTo(px + bodyRx * .65, py + bodyRy * .3 + bob, px + bodyRx * 1.05, py - bodyRy * .1 + bob, px + bodyRx * .95, py - bodyRy * .5 + bob);
+    X.closePath(); X.fill();
+  }
+
+  // Armor / clothing details
+  if (G.armor) {
+    // Armor plates highlight
+    X.fillStyle = 'rgba(255,255,255,.1)';
+    X.beginPath(); X.ellipse(px - bodyRx * .25, py - bodyRy * .15 + bob, bodyRx * .14, bodyRy * .2, 0, 0, Math.PI * 2); X.fill();
+    X.beginPath(); X.ellipse(px + bodyRx * .25, py - bodyRy * .15 + bob, bodyRx * .14, bodyRy * .2, 0, 0, Math.PI * 2); X.fill();
+    // Armor edge
+    X.strokeStyle = 'rgba(255,255,255,.12)'; X.lineWidth = .5;
+    X.beginPath(); X.ellipse(px, py + bob, bodyRx * .7, bodyRy * .8, 0, Math.PI * 1.2, Math.PI * 1.8); X.stroke();
+    // Collar
+    X.strokeStyle = 'rgba(200,180,120,.3)'; X.lineWidth = 1.5;
+    X.beginPath(); X.arc(px, py - bodyRy * .4 + bob, bodyRx * .45, Math.PI * .18, Math.PI * .82); X.stroke();
+  } else {
     // Muscle definition
     if (fM > 0.5 && !isFemale) {
-      X.fillStyle = 'rgba(255,255,255,.04)';
-      X.beginPath(); X.ellipse(px - bodyRx * .3, py - bodyRy * .1 + bob, bodyRx * .22, bodyRy * .35, 0, 0, Math.PI * 2); X.fill();
-      X.beginPath(); X.ellipse(px + bodyRx * .3, py - bodyRy * .1 + bob, bodyRx * .22, bodyRy * .35, 0, 0, Math.PI * 2); X.fill();
+      X.fillStyle = 'rgba(255,255,255,.05)';
+      X.beginPath(); X.ellipse(px - bodyRx * .28, py - bodyRy * .1 + bob, bodyRx * .16, bodyRy * .22, 0, 0, Math.PI * 2); X.fill();
+      X.beginPath(); X.ellipse(px + bodyRx * .28, py - bodyRy * .1 + bob, bodyRx * .16, bodyRy * .22, 0, 0, Math.PI * 2); X.fill();
     }
-    if (isFemale) {
-      // Subtle feminine shape detail
-      X.fillStyle = 'rgba(0,0,0,.06)';
-      X.beginPath(); X.ellipse(px, py + bodyRy * .2 + bob, bodyRx * .35, bodyRy * .15, 0, 0, Math.PI * 2); X.fill();
-    }
+    // Collar
+    X.strokeStyle = 'rgba(0,0,0,.1)'; X.lineWidth = 1;
+    X.beginPath(); X.arc(px, py - bodyRy * .35 + bob, bodyRx * .35, Math.PI * .2, Math.PI * .8); X.stroke();
   }
-  // Belt
-  X.fillStyle = '#4a3020';
-  X.fillRect(px - bodyRx + 2, py + bodyRy * .35 + bob, bodyRx * 2 - 4, 3);
-  X.fillStyle = '#d4a017';
-  X.fillRect(px - 2, py + bodyRy * .35 + bob, 4, 3);
 
-  // Arms — scaled
-  const armW = 3 + fM * 2 + fF * 1;
+  // Belt with gradient buckle
+  X.fillStyle = '#4a3020';
+  const beltY2 = py + bodyRy * .35 + bob;
+  X.fillRect(px - bodyRx + 2, beltY2, bodyRx * 2 - 4, 3);
+  const buckGrad = X.createLinearGradient(px - 3, beltY2, px + 3, beltY2 + 3);
+  buckGrad.addColorStop(0, '#e8c040');
+  buckGrad.addColorStop(0.5, '#d4a017');
+  buckGrad.addColorStop(1, '#b08010');
+  X.fillStyle = buckGrad;
+  X.fillRect(px - 3, beltY2 - .5, 6, 4);
+
+  // Arms with gradient and rounded shape
+  const armW = 3.5 + fM * 2.5 + fF * 1;
   const armH = 9 + fH * 3;
   const armAngle = walk ? Math.sin(performance.now() * .012) * .4 : 0;
-  X.fillStyle = G.armor ? '#6a7a8a' : G.headColor;
+  const armCol = G.armor ? darkenColor('#6a7a8a', 10) : G.headColor;
+  const armGrad = X.createLinearGradient(0, 0, 0, armH);
+  armGrad.addColorStop(0, lightenColor(armCol, 15));
+  armGrad.addColorStop(1, armCol);
   // Left arm
-  X.save(); X.translate(px - bodyRx + 1, py - 2 + bob); X.rotate(-armAngle);
-  X.fillRect(-armW / 2, 0, armW, armH); X.restore();
-  // Right arm
-  X.save(); X.translate(px + bodyRx - 1, py - 2 + bob); X.rotate(armAngle);
-  X.fillRect(-armW / 2, 0, armW, armH); X.restore();
-
-  // Head — scaled
-  const headR = G.r * .55 * fHead;
+  X.save(); X.translate(px - bodyRx + 1, py - 3 + bob); X.rotate(-armAngle);
+  X.fillStyle = armGrad;
+  X.fillRect(-armW / 2, 0, armW, armH);
   X.fillStyle = G.headColor;
-  X.beginPath(); X.arc(px, py - bodyRy * .6 + bob, headR, 0, Math.PI * 2); X.fill();
-  // Hair
-  X.fillStyle = G.hairColor;
-  if (isFemale) {
-    // Longer hair for female
-    X.beginPath(); X.arc(px, py - bodyRy * .7 + bob, headR * 1.05, Math.PI, Math.PI * 2); X.fill();
-    X.fillRect(px - headR * 1.05, py - bodyRy * .7 + bob, headR * .25, headR * 1.6);
-    X.fillRect(px + headR * .8, py - bodyRy * .7 + bob, headR * .25, headR * 1.6);
-    X.fillRect(px - headR * 1.05, py - bodyRy * .7 + bob, headR * 2.1, headR * .2);
-  } else {
-    X.beginPath(); X.arc(px, py - bodyRy * .75 + bob, headR * .95, Math.PI * .85, Math.PI * 2.15); X.fill();
-    X.fillRect(px - headR, py - bodyRy * .75 + bob, headR * 2, headR * .25);
-  }
-  // Eyes
-  X.fillStyle = '#333';
-  X.beginPath(); X.arc(px - headR * .45, py - bodyRy * .65 + bob, 1.5, 0, Math.PI * 2); X.fill();
-  X.beginPath(); X.arc(px + headR * .45, py - bodyRy * .65 + bob, 1.5, 0, Math.PI * 2); X.fill();
+  X.beginPath(); X.arc(0, armH, armW * .55, 0, Math.PI * 2); X.fill();
+  X.restore();
+  // Right arm
+  X.save(); X.translate(px + bodyRx - 1, py - 3 + bob); X.rotate(armAngle);
+  X.fillStyle = armGrad;
+  X.fillRect(-armW / 2, 0, armW, armH);
+  X.fillStyle = G.headColor;
+  X.beginPath(); X.arc(0, armH, armW * .55, 0, Math.PI * 2); X.fill();
+  X.restore();
+
+  // Head, hair, face using shared helpers
+  drawRealisticHead(X, px, headY, headR, G.headColor, G.hairColor, G.gender);
+  drawRealisticHair(X, px, headY, headR, G.hairColor, isFemale);
+  drawRealisticFace(X, px, headY, headR, isFemale, '#4a6a40');
 
   // Weapon
   if (G.weapon) {
@@ -1080,39 +1398,60 @@ function drawPlayer() {
       const wLen = 24 + (G.weapon.atk || 0) * .5;
       const wx = px + Math.cos(swingAngle) * wLen;
       const wy = py + Math.sin(swingAngle) * wLen + bob;
-      X.strokeStyle = '#b0b0b0'; X.lineWidth = 3; X.lineCap = 'round';
+      // Blade
+      X.strokeStyle = '#c0c0c0'; X.lineWidth = 3; X.lineCap = 'round';
       X.beginPath();
       X.moveTo(px + Math.cos(swingAngle) * 8, py + Math.sin(swingAngle) * 8 + bob);
       X.lineTo(wx, wy);
       X.stroke();
+      // Blade edge highlight
+      X.strokeStyle = 'rgba(255,255,255,.5)'; X.lineWidth = 1;
+      X.beginPath();
+      X.moveTo(px + Math.cos(swingAngle) * 10, py + Math.sin(swingAngle) * 10 + bob);
+      X.lineTo(wx, wy);
+      X.stroke();
       // Blade glow
-      X.strokeStyle = 'rgba(255,255,255,.4)'; X.lineWidth = 5;
+      X.strokeStyle = 'rgba(255,255,255,.3)'; X.lineWidth = 6;
       X.beginPath(); X.moveTo(px + Math.cos(swingAngle) * 16, py + Math.sin(swingAngle) * 16 + bob);
       X.lineTo(wx, wy); X.stroke();
       // Trail arc
-      for (let i = 0; i < 4; i++) {
-        const ta = swingAngle - i * .3;
-        X.fillStyle = `rgba(255,255,255,${.15 - i * .03})`;
+      for (let i = 0; i < 5; i++) {
+        const ta = swingAngle - i * .25;
+        X.fillStyle = `rgba(255,255,255,${.18 - i * .035})`;
         X.beginPath(); X.arc(px + Math.cos(ta) * wLen, py + Math.sin(ta) * wLen + bob, 3 - i * .5, 0, Math.PI * 2); X.fill();
       }
     } else {
       const wLen = 18 + (G.weapon.atk || 0) * .3;
       const wx = px + Math.cos(G.facing) * wLen;
       const wy = py + Math.sin(G.facing) * wLen + bob;
-      X.strokeStyle = '#888'; X.lineWidth = 2; X.lineCap = 'round';
+      // Blade
+      X.strokeStyle = '#999'; X.lineWidth = 2.5; X.lineCap = 'round';
       X.beginPath();
       X.moveTo(px + Math.cos(G.facing) * 8, py + Math.sin(G.facing) * 8 + bob);
+      X.lineTo(wx, wy);
+      X.stroke();
+      // Blade edge
+      X.strokeStyle = 'rgba(255,255,255,.2)'; X.lineWidth = 1;
+      X.beginPath();
+      X.moveTo(px + Math.cos(G.facing) * 10, py + Math.sin(G.facing) * 10 + bob);
       X.lineTo(wx, wy);
       X.stroke();
       // Handle
       X.fillStyle = '#5a3a1a';
       X.beginPath(); X.arc(px + Math.cos(G.facing) * 8, py + Math.sin(G.facing) * 8 + bob, 3, 0, Math.PI * 2); X.fill();
+      // Guard
+      const gAngle = G.facing + Math.PI * .5;
+      X.strokeStyle = '#888'; X.lineWidth = 1.5;
+      X.beginPath();
+      X.moveTo(px + Math.cos(G.facing) * 9 + Math.cos(gAngle) * 3, py + Math.sin(G.facing) * 9 + Math.sin(gAngle) * 3 + bob);
+      X.lineTo(px + Math.cos(G.facing) * 9 - Math.cos(gAngle) * 3, py + Math.sin(G.facing) * 9 - Math.sin(gAngle) * 3 + bob);
+      X.stroke();
     }
   }
 
   X.globalAlpha = 1;
 
-  // Level text
+  // Level text with shadow
   X.font = 'bold 10px Segoe UI'; X.textAlign = 'center';
   const nameStr = G.playerName ? `${G.playerName} Ур.${G.level}` : `Ур.${G.level}`;
   X.fillStyle = '#000'; X.fillText(nameStr, px + 1, py - G.r - 15);
@@ -1123,23 +1462,88 @@ function drawFollower(s, i) {
   const angle = performance.now() * .001 + i * 2.1;
   const fx = G.x + Math.cos(angle) * 38;
   const fy = G.y + Math.sin(angle) * 38 + 8;
-  X.fillStyle = 'rgba(0,0,0,.2)';
-  X.beginPath(); X.ellipse(fx, fy + 9, 8, 3, 0, 0, Math.PI * 2); X.fill();
-  X.fillStyle = s.ranged ? '#5a5a70' : '#5a6a5a';
-  X.beginPath(); X.arc(fx, fy, 9, 0, Math.PI * 2); X.fill();
-  X.fillStyle = '#d0b080';
-  X.beginPath(); X.arc(fx, fy - 6, 5.5, 0, Math.PI * 2); X.fill();
-  X.fillStyle = '#333';
-  X.beginPath(); X.arc(fx - 2, fy - 7, 1, 0, Math.PI * 2); X.fill();
-  X.beginPath(); X.arc(fx + 2, fy - 7, 1, 0, Math.PI * 2); X.fill();
+  const bobAnim = Math.sin(performance.now() * .008 + i * 1.5) * 1.5;
+  const isFemale = s.gender === 'f';
+  const skinCol = s.skinColor || '#d0b080';
+  const hairCol = s.hairColor || '#4a3020';
+  const bodyCol = s.bodyColor || (s.ranged ? '#5a5a70' : '#5a6a5a');
+  const r = 9, headR = 5.5;
+
+  // Shadow
+  X.fillStyle = 'rgba(0,0,0,.25)';
+  X.beginPath(); X.ellipse(fx, fy + r + 2, r * .85, 2.5, 0, 0, Math.PI * 2); X.fill();
+
+  // Legs
+  X.fillStyle = '#3a2a18';
+  const legOff = Math.sin(performance.now() * .01 + i) * 2;
+  X.fillRect(fx - 3, fy + r - 2 + legOff, 2.5, 5);
+  X.fillRect(fx + .5, fy + r - 2 - legOff, 2.5, 5);
+  X.fillStyle = '#2a1a0a';
+  X.fillRect(fx - 3.5, fy + r + 2.5 + legOff, 3.5, 2);
+  X.fillRect(fx, fy + r + 2.5 - legOff, 3.5, 2);
+
+  // Body with gradient
+  const bg = X.createRadialGradient(fx - r*.2, fy - r*.15 + bobAnim, 0, fx, fy + bobAnim, r);
+  bg.addColorStop(0, lightenColor(bodyCol, 25));
+  bg.addColorStop(0.6, bodyCol);
+  bg.addColorStop(1, darkenColor(bodyCol, 20));
+  X.fillStyle = bg;
+  if (isFemale) {
+    X.beginPath();
+    X.ellipse(fx, fy - r*.1 + bobAnim, r*.7, r*.5, 0, 0, Math.PI*2); X.fill();
+    X.beginPath();
+    X.ellipse(fx, fy + r*.2 + bobAnim, r*.75, r*.45, 0, 0, Math.PI*2); X.fill();
+  } else {
+    X.beginPath();
+    X.moveTo(fx - r*.8, fy - r*.4 + bobAnim);
+    X.lineTo(fx + r*.8, fy - r*.4 + bobAnim);
+    X.lineTo(fx + r*.55, fy + r*.45 + bobAnim);
+    X.lineTo(fx - r*.55, fy + r*.45 + bobAnim);
+    X.closePath(); X.fill();
+  }
+  // Belt
+  X.fillStyle = '#3a2518';
+  X.fillRect(fx - r*.55, fy + r*.3 + bobAnim, r*1.1, 1.5);
+
+  // Arms
+  X.fillStyle = skinCol;
+  X.fillRect(fx - r*.85, fy - r*.15 + bobAnim, 2.5, 6);
+  X.beginPath(); X.arc(fx - r*.85 + 1.25, fy - r*.15 + 6 + bobAnim, 1.3, 0, Math.PI*2); X.fill();
+  X.fillRect(fx + r*.6, fy - r*.15 + bobAnim, 2.5, 6);
+  X.beginPath(); X.arc(fx + r*.6 + 1.25, fy - r*.15 + 6 + bobAnim, 1.3, 0, Math.PI*2); X.fill();
+
+  // Neck
+  X.fillStyle = skinCol;
+  X.fillRect(fx - 1.5, fy - r*.55 + bobAnim, 3, 3);
+
+  // Head
+  const headY = fy - r*.65 + bobAnim;
+  drawRealisticHead(X, fx, headY, headR, skinCol, hairCol, s.gender || 'm');
+  drawRealisticHair(X, fx, headY, headR, hairCol, isFemale);
+  drawRealisticFace(X, fx, headY, headR, isFemale, '#5a7a50');
+
   // Weapon
   if (s.ranged) {
+    // Bow
     X.strokeStyle = '#8a7050'; X.lineWidth = 1.5;
-    X.beginPath(); X.arc(fx + 8, fy - 2, 7, -.8, .8); X.stroke();
+    X.beginPath(); X.arc(fx + r, fy - 2 + bobAnim, 7, -.8, .8); X.stroke();
+    X.strokeStyle = '#bba880'; X.lineWidth = .5;
+    X.beginPath(); X.moveTo(fx + r + Math.cos(-.8)*7, fy - 2 + Math.sin(-.8)*7 + bobAnim);
+    X.lineTo(fx + r + Math.cos(.8)*7, fy - 2 + Math.sin(.8)*7 + bobAnim); X.stroke();
   } else {
-    X.strokeStyle = '#999'; X.lineWidth = 1.5;
-    X.beginPath(); X.moveTo(fx + 6, fy + 2); X.lineTo(fx + 14, fy - 6); X.stroke();
+    // Sword
+    X.strokeStyle = '#aaa'; X.lineWidth = 1.5; X.lineCap = 'round';
+    X.beginPath(); X.moveTo(fx + r*.6, fy + 2 + bobAnim); X.lineTo(fx + r*1.4, fy - 6 + bobAnim); X.stroke();
+    X.strokeStyle = 'rgba(255,255,255,.3)'; X.lineWidth = .5;
+    X.beginPath(); X.moveTo(fx + r*.7, fy + 1 + bobAnim); X.lineTo(fx + r*1.3, fy - 5 + bobAnim); X.stroke();
+    X.fillStyle = '#5a3a1a';
+    X.beginPath(); X.arc(fx + r*.6, fy + 2 + bobAnim, 1.5, 0, Math.PI*2); X.fill();
   }
+
+  // Name (small)
+  X.font = '8px Segoe UI'; X.textAlign = 'center';
+  X.fillStyle = '#aaa';
+  X.fillText(s.firstName || s.name, fx, headY - headR - 3);
 }
 
 function drawItemOnGround(it) {
@@ -2380,7 +2784,7 @@ function ccUpdatePreview() {
   cx.clearRect(0, 0, W, H);
 
   // Read sliders
-  const sHeight = +document.getElementById('cc-height').value / 100; // 0-1
+  const sHeight = +document.getElementById('cc-height').value / 100;
   const sWidth = +document.getElementById('cc-width').value / 100;
   const sFat = +document.getElementById('cc-fat').value / 100;
   const sMuscle = +document.getElementById('cc-muscle').value / 100;
@@ -2391,133 +2795,277 @@ function ccUpdatePreview() {
   const isFemale = ccGender === 'f';
 
   // Derived sizes
-  const totalH = 90 + sHeight * 60; // 90-150
-  const bodyW = 22 + sWidth * 16 + sFat * 10; // body radius
+  const bodyW = 22 + sWidth * 16 + sFat * 10;
   const bodyH = bodyW * (1 + sFat * 0.3);
   const headR = 14 + sHead * 10;
   const legLen = 20 + sLegs * 20;
-  const armLen = 12 + sHeight * 8;
+  const armLen = 14 + sHeight * 10;
   const shoulderW = bodyW * (0.7 + sMuscle * 0.4 + sWidth * 0.2);
 
   const cx0 = W / 2;
-  const feetY = H - 40;
+  const feetY = H - 38;
   const bodyY = feetY - legLen - bodyH * 0.5;
-  const headY = bodyY - bodyH * 0.5 - headR * 0.6;
+  const headY = bodyY - bodyH * 0.5 - headR * 0.55;
 
-  // Ground shadow
-  cx.fillStyle = 'rgba(0,0,0,.3)';
-  cx.beginPath(); cx.ellipse(cx0, feetY + 4, bodyW * 0.8, 6, 0, 0, Math.PI * 2); cx.fill();
+  // Ground shadow with gradient
+  const sg = cx.createRadialGradient(cx0, feetY + 5, 2, cx0, feetY + 5, bodyW);
+  sg.addColorStop(0, 'rgba(0,0,0,.35)');
+  sg.addColorStop(1, 'rgba(0,0,0,0)');
+  cx.fillStyle = sg;
+  cx.beginPath(); cx.ellipse(cx0, feetY + 5, bodyW * 0.85, 7, 0, 0, Math.PI * 2); cx.fill();
 
-  // Legs
+  // Legs with gradient
   const legW = 5 + sFat * 3 + sMuscle * 2;
-  cx.fillStyle = '#3a2a18';
-  cx.fillRect(cx0 - legW * 1.5, feetY - legLen, legW, legLen);
-  cx.fillRect(cx0 + legW * 0.5, feetY - legLen, legW, legLen);
-  // Boots
-  cx.fillStyle = '#2a1a0a';
-  cx.fillRect(cx0 - legW * 1.5 - 2, feetY - 4, legW + 4, 6);
-  cx.fillRect(cx0 + legW * 0.5 - 2, feetY - 4, legW + 4, 6);
+  const legGrad = cx.createLinearGradient(cx0, feetY - legLen, cx0, feetY);
+  legGrad.addColorStop(0, '#4a3520');
+  legGrad.addColorStop(0.7, '#3a2a18');
+  legGrad.addColorStop(1, '#2a1a0a');
+  cx.fillStyle = legGrad;
+  // Left leg with shape
+  cx.beginPath();
+  cx.moveTo(cx0 - legW * 1.5, feetY - legLen);
+  cx.bezierCurveTo(cx0 - legW * 1.7, feetY - legLen * .5, cx0 - legW * 1.3, feetY - legLen * .3, cx0 - legW * 1.5 - 1, feetY - 4);
+  cx.lineTo(cx0 - legW * .5 + 1, feetY - 4);
+  cx.bezierCurveTo(cx0 - legW * .3, feetY - legLen * .3, cx0 - legW * .5, feetY - legLen * .6, cx0 - legW * .5, feetY - legLen);
+  cx.closePath(); cx.fill();
+  // Right leg
+  cx.beginPath();
+  cx.moveTo(cx0 + legW * .5, feetY - legLen);
+  cx.bezierCurveTo(cx0 + legW * .5, feetY - legLen * .6, cx0 + legW * .3, feetY - legLen * .3, cx0 + legW * .5 - 1, feetY - 4);
+  cx.lineTo(cx0 + legW * 1.5 + 1, feetY - 4);
+  cx.bezierCurveTo(cx0 + legW * 1.3, feetY - legLen * .3, cx0 + legW * 1.7, feetY - legLen * .5, cx0 + legW * 1.5, feetY - legLen);
+  cx.closePath(); cx.fill();
+  // Knee shading
+  cx.fillStyle = 'rgba(0,0,0,.06)';
+  cx.beginPath(); cx.ellipse(cx0 - legW, feetY - legLen * .55, legW * .4, legLen * .12, 0, 0, Math.PI * 2); cx.fill();
+  cx.beginPath(); cx.ellipse(cx0 + legW, feetY - legLen * .55, legW * .4, legLen * .12, 0, 0, Math.PI * 2); cx.fill();
 
-  // Body
-  cx.fillStyle = ccBodyColor;
+  // Boots with detail
+  cx.fillStyle = '#2a1a0a';
+  cx.beginPath();
+  cx.moveTo(cx0 - legW * 1.5 - 3, feetY - 4);
+  cx.quadraticCurveTo(cx0 - legW * 1.5 - 4, feetY + 3, cx0 - legW * 1.5 - 2, feetY + 4);
+  cx.lineTo(cx0 - legW * .5 + 3, feetY + 4);
+  cx.quadraticCurveTo(cx0 - legW * .5 + 4, feetY + 3, cx0 - legW * .5 + 2, feetY - 4);
+  cx.closePath(); cx.fill();
+  cx.beginPath();
+  cx.moveTo(cx0 + legW * .5 - 2, feetY - 4);
+  cx.quadraticCurveTo(cx0 + legW * .5 - 4, feetY + 3, cx0 + legW * .5 - 3, feetY + 4);
+  cx.lineTo(cx0 + legW * 1.5 + 2, feetY + 4);
+  cx.quadraticCurveTo(cx0 + legW * 1.5 + 4, feetY + 3, cx0 + legW * 1.5 + 3, feetY - 4);
+  cx.closePath(); cx.fill();
+  // Boot top trim
+  cx.strokeStyle = '#4a3020'; cx.lineWidth = 1;
+  cx.beginPath(); cx.moveTo(cx0 - legW * 1.5 - 2, feetY - 4); cx.lineTo(cx0 - legW * .5 + 2, feetY - 4); cx.stroke();
+  cx.beginPath(); cx.moveTo(cx0 + legW * .5 - 2, feetY - 4); cx.lineTo(cx0 + legW * 1.5 + 2, feetY - 4); cx.stroke();
+
+  // Body with gradient
+  const bodyGrad = cx.createRadialGradient(cx0 - shoulderW * .3, bodyY - bodyH * .2, 0, cx0, bodyY, shoulderW * 1.2);
+  bodyGrad.addColorStop(0, lightenColor(ccBodyColor, 32));
+  bodyGrad.addColorStop(0.5, ccBodyColor);
+  bodyGrad.addColorStop(1, darkenColor(ccBodyColor, 28));
+  cx.fillStyle = bodyGrad;
   if (isFemale) {
-    // Female body shape — hourglass
+    // Feminine hourglass body with curves
     cx.beginPath();
-    cx.ellipse(cx0, bodyY - bodyH * 0.15, shoulderW * 0.85, bodyH * 0.45, 0, 0, Math.PI * 2);
-    cx.fill();
-    cx.beginPath();
-    cx.ellipse(cx0, bodyY + bodyH * 0.3, shoulderW * 0.9, bodyH * 0.4, 0, 0, Math.PI * 2);
-    cx.fill();
-    // Waist
-    cx.fillRect(cx0 - shoulderW * 0.5, bodyY - bodyH * 0.1, shoulderW, bodyH * 0.35);
-  } else {
-    // Male body — broader shoulders
-    cx.beginPath();
-    cx.moveTo(cx0 - shoulderW, bodyY - bodyH * 0.45);
-    cx.lineTo(cx0 + shoulderW, bodyY - bodyH * 0.45);
-    cx.lineTo(cx0 + shoulderW * 0.75, bodyY + bodyH * 0.5);
-    cx.lineTo(cx0 - shoulderW * 0.75, bodyY + bodyH * 0.5);
+    cx.moveTo(cx0 - shoulderW * .85, bodyY - bodyH * .45);
+    cx.bezierCurveTo(cx0 - shoulderW * .95, bodyY - bodyH * .2, cx0 - shoulderW * .5, bodyY + bodyH * .05, cx0 - shoulderW * .45, bodyY + bodyH * .1);
+    cx.bezierCurveTo(cx0 - shoulderW * .55, bodyY + bodyH * .2, cx0 - shoulderW * .9, bodyY + bodyH * .35, cx0 - shoulderW * .85, bodyY + bodyH * .5);
+    cx.lineTo(cx0 + shoulderW * .85, bodyY + bodyH * .5);
+    cx.bezierCurveTo(cx0 + shoulderW * .9, bodyY + bodyH * .35, cx0 + shoulderW * .55, bodyY + bodyH * .2, cx0 + shoulderW * .45, bodyY + bodyH * .1);
+    cx.bezierCurveTo(cx0 + shoulderW * .5, bodyY + bodyH * .05, cx0 + shoulderW * .95, bodyY - bodyH * .2, cx0 + shoulderW * .85, bodyY - bodyH * .45);
     cx.closePath(); cx.fill();
-    // Muscle definition
-    if (sMuscle > 0.4) {
-      cx.fillStyle = 'rgba(255,255,255,.05)';
-      cx.beginPath(); cx.ellipse(cx0 - shoulderW * 0.3, bodyY - bodyH * 0.1, shoulderW * 0.25, bodyH * 0.3, 0, 0, Math.PI * 2); cx.fill();
-      cx.beginPath(); cx.ellipse(cx0 + shoulderW * 0.3, bodyY - bodyH * 0.1, shoulderW * 0.25, bodyH * 0.3, 0, 0, Math.PI * 2); cx.fill();
+    // Bust suggestion (subtle shading)
+    cx.fillStyle = 'rgba(0,0,0,.04)';
+    cx.beginPath(); cx.ellipse(cx0 - shoulderW * .25, bodyY - bodyH * .15, shoulderW * .2, bodyH * .15, -.15, 0, Math.PI * 2); cx.fill();
+    cx.beginPath(); cx.ellipse(cx0 + shoulderW * .25, bodyY - bodyH * .15, shoulderW * .2, bodyH * .15, .15, 0, Math.PI * 2); cx.fill();
+  } else {
+    // Masculine broad torso
+    cx.beginPath();
+    cx.moveTo(cx0 - shoulderW, bodyY - bodyH * .45);
+    cx.bezierCurveTo(cx0 - shoulderW * 1.05, bodyY - bodyH * .1, cx0 - shoulderW * .8, bodyY + bodyH * .3, cx0 - shoulderW * .72, bodyY + bodyH * .5);
+    cx.lineTo(cx0 + shoulderW * .72, bodyY + bodyH * .5);
+    cx.bezierCurveTo(cx0 + shoulderW * .8, bodyY + bodyH * .3, cx0 + shoulderW * 1.05, bodyY - bodyH * .1, cx0 + shoulderW, bodyY - bodyH * .45);
+    cx.closePath(); cx.fill();
+    // Pectoral definition
+    if (sMuscle > 0.3) {
+      cx.fillStyle = `rgba(255,255,255,${sMuscle * .06})`;
+      cx.beginPath(); cx.ellipse(cx0 - shoulderW * .3, bodyY - bodyH * .15, shoulderW * .22, bodyH * .22, 0, 0, Math.PI * 2); cx.fill();
+      cx.beginPath(); cx.ellipse(cx0 + shoulderW * .3, bodyY - bodyH * .15, shoulderW * .22, bodyH * .22, 0, 0, Math.PI * 2); cx.fill();
+      // Abs hint
+      if (sMuscle > 0.6) {
+        cx.strokeStyle = `rgba(255,255,255,${sMuscle * .04})`;
+        cx.lineWidth = 1;
+        cx.beginPath(); cx.moveTo(cx0, bodyY - bodyH * .05); cx.lineTo(cx0, bodyY + bodyH * .3); cx.stroke();
+        cx.beginPath(); cx.moveTo(cx0 - shoulderW * .15, bodyY + bodyH * .02); cx.lineTo(cx0 + shoulderW * .15, bodyY + bodyH * .02); cx.stroke();
+        cx.beginPath(); cx.moveTo(cx0 - shoulderW * .12, bodyY + bodyH * .14); cx.lineTo(cx0 + shoulderW * .12, bodyY + bodyH * .14); cx.stroke();
+      }
     }
   }
+  // Collar / neckline
+  cx.strokeStyle = 'rgba(0,0,0,.12)'; cx.lineWidth = 1.5;
+  cx.beginPath(); cx.arc(cx0, bodyY - bodyH * .35, shoulderW * .35, Math.PI * .2, Math.PI * .8); cx.stroke();
+  // Side seam
+  cx.strokeStyle = 'rgba(0,0,0,.04)'; cx.lineWidth = .5;
+  cx.beginPath(); cx.moveTo(cx0 - shoulderW * .85, bodyY - bodyH * .35); cx.lineTo(cx0 - shoulderW * .72, bodyY + bodyH * .5); cx.stroke();
+  cx.beginPath(); cx.moveTo(cx0 + shoulderW * .85, bodyY - bodyH * .35); cx.lineTo(cx0 + shoulderW * .72, bodyY + bodyH * .5); cx.stroke();
 
-  // Belt
+  // Belt with detailed buckle
   cx.fillStyle = '#4a3020';
   const beltY = bodyY + bodyH * 0.3;
-  cx.fillRect(cx0 - shoulderW * 0.8, beltY, shoulderW * 1.6, 4);
-  cx.fillStyle = '#d4a017';
-  cx.fillRect(cx0 - 3, beltY, 6, 4);
+  cx.fillRect(cx0 - shoulderW * 0.82, beltY, shoulderW * 1.64, 4);
+  // Belt stitching
+  cx.strokeStyle = 'rgba(100,80,50,.3)'; cx.lineWidth = .5;
+  cx.setLineDash([2, 3]);
+  cx.beginPath(); cx.moveTo(cx0 - shoulderW * .8, beltY + 1); cx.lineTo(cx0 + shoulderW * .8, beltY + 1); cx.stroke();
+  cx.beginPath(); cx.moveTo(cx0 - shoulderW * .8, beltY + 3); cx.lineTo(cx0 + shoulderW * .8, beltY + 3); cx.stroke();
+  cx.setLineDash([]);
+  // Buckle gradient
+  const buckGrad = cx.createLinearGradient(cx0 - 5, beltY - 1, cx0 + 5, beltY + 5);
+  buckGrad.addColorStop(0, '#f0d050');
+  buckGrad.addColorStop(0.3, '#d4a017');
+  buckGrad.addColorStop(0.7, '#c09010');
+  buckGrad.addColorStop(1, '#a07808');
+  cx.fillStyle = buckGrad;
+  cx.fillRect(cx0 - 5, beltY - 1, 10, 6);
+  cx.strokeStyle = '#8a6a10'; cx.lineWidth = .5;
+  cx.strokeRect(cx0 - 5, beltY - 1, 10, 6);
+  // Buckle prong
+  cx.fillStyle = '#b08810';
+  cx.fillRect(cx0 - 1, beltY, 2, 4);
 
-  // Arms
+  // Neck
   cx.fillStyle = ccSkinColor;
-  const armW = 5 + sMuscle * 4 + sFat * 2;
-  // Left arm
+  cx.fillRect(cx0 - 5, bodyY - bodyH * .5 - 6, 10, 10);
+  // Neck shading
+  cx.fillStyle = 'rgba(0,0,0,.06)';
+  cx.fillRect(cx0 - 5, bodyY - bodyH * .5 - 2, 10, 5);
+
+  // Arms with gradient, joints, and hands
+  const armW = 6 + sMuscle * 5 + sFat * 2;
+  const armGrad = cx.createLinearGradient(0, 0, 0, armLen);
+  armGrad.addColorStop(0, lightenColor(ccSkinColor, 12));
+  armGrad.addColorStop(0.5, ccSkinColor);
+  armGrad.addColorStop(1, darkenColor(ccSkinColor, 8));
+  // Left arm with sleeve
   cx.save(); cx.translate(cx0 - shoulderW + 2, bodyY - bodyH * 0.3);
-  cx.fillRect(-armW / 2, 0, armW, armLen);
+  // Sleeve (upper arm in clothing color)
+  const sleeveGrad = cx.createLinearGradient(-armW/2, 0, armW/2, 0);
+  sleeveGrad.addColorStop(0, darkenColor(ccBodyColor, 15));
+  sleeveGrad.addColorStop(0.5, lightenColor(ccBodyColor, 10));
+  sleeveGrad.addColorStop(1, darkenColor(ccBodyColor, 10));
+  cx.fillStyle = sleeveGrad;
+  cx.beginPath();
+  cx.moveTo(-armW * .6, 0);
+  cx.bezierCurveTo(-armW * .65, armLen * .3, -armW * .5, armLen * .4, -armW * .45, armLen * .45);
+  cx.lineTo(armW * .45, armLen * .45);
+  cx.bezierCurveTo(armW * .5, armLen * .4, armW * .65, armLen * .3, armW * .6, 0);
+  cx.closePath(); cx.fill();
+  // Forearm (skin)
+  cx.fillStyle = armGrad;
+  cx.beginPath();
+  cx.moveTo(-armW * .45, armLen * .45);
+  cx.bezierCurveTo(-armW * .42, armLen * .7, -armW * .38, armLen * .9, -armW * .3, armLen);
+  cx.lineTo(armW * .3, armLen);
+  cx.bezierCurveTo(armW * .38, armLen * .9, armW * .42, armLen * .7, armW * .45, armLen * .45);
+  cx.closePath(); cx.fill();
   // Hand
-  cx.beginPath(); cx.arc(0, armLen, armW * 0.5, 0, Math.PI * 2); cx.fill();
-  cx.restore();
-  // Right arm
-  cx.save(); cx.translate(cx0 + shoulderW - 2, bodyY - bodyH * 0.3);
-  cx.fillRect(-armW / 2, 0, armW, armLen);
-  cx.beginPath(); cx.arc(0, armLen, armW * 0.5, 0, Math.PI * 2); cx.fill();
-  cx.restore();
-
-  // Head
   cx.fillStyle = ccSkinColor;
-  cx.beginPath(); cx.arc(cx0, headY, headR, 0, Math.PI * 2); cx.fill();
+  cx.beginPath(); cx.arc(0, armLen + 2, armW * .4, 0, Math.PI * 2); cx.fill();
+  // Fingers hint
+  cx.fillStyle = darkenColor(ccSkinColor, 5);
+  for (let fi = -1; fi <= 1; fi++) {
+    cx.beginPath(); cx.arc(fi * armW * .15, armLen + armW * .5, armW * .12, 0, Math.PI * 2); cx.fill();
+  }
+  cx.restore();
+  // Right arm (mirror)
+  cx.save(); cx.translate(cx0 + shoulderW - 2, bodyY - bodyH * 0.3);
+  cx.fillStyle = sleeveGrad;
+  cx.beginPath();
+  cx.moveTo(-armW * .6, 0);
+  cx.bezierCurveTo(-armW * .65, armLen * .3, -armW * .5, armLen * .4, -armW * .45, armLen * .45);
+  cx.lineTo(armW * .45, armLen * .45);
+  cx.bezierCurveTo(armW * .5, armLen * .4, armW * .65, armLen * .3, armW * .6, 0);
+  cx.closePath(); cx.fill();
+  cx.fillStyle = armGrad;
+  cx.beginPath();
+  cx.moveTo(-armW * .45, armLen * .45);
+  cx.bezierCurveTo(-armW * .42, armLen * .7, -armW * .38, armLen * .9, -armW * .3, armLen);
+  cx.lineTo(armW * .3, armLen);
+  cx.bezierCurveTo(armW * .38, armLen * .9, armW * .42, armLen * .7, armW * .45, armLen * .45);
+  cx.closePath(); cx.fill();
+  cx.fillStyle = ccSkinColor;
+  cx.beginPath(); cx.arc(0, armLen + 2, armW * .4, 0, Math.PI * 2); cx.fill();
+  cx.fillStyle = darkenColor(ccSkinColor, 5);
+  for (let fi = -1; fi <= 1; fi++) {
+    cx.beginPath(); cx.arc(fi * armW * .15, armLen + armW * .5, armW * .12, 0, Math.PI * 2); cx.fill();
+  }
+  cx.restore();
 
-  // Hair
-  cx.fillStyle = ccHairColor;
+  // Head with realistic gradient
+  drawRealisticHead(cx, cx0, headY, headR, ccSkinColor, ccHairColor, ccGender);
+  // Additional head detail for preview - chin contour
+  cx.fillStyle = 'rgba(0,0,0,.04)';
+  cx.beginPath(); cx.ellipse(cx0, headY + headR * .6, headR * .5, headR * .3, 0, 0, Math.PI * 2); cx.fill();
+
+  // Hair using shared helper
+  drawRealisticHair(cx, cx0, headY, headR, ccHairColor, isFemale);
+
+  // Face using shared helper with larger detail
+  drawRealisticFace(cx, cx0, headY, headR, isFemale, '#4a7a40');
+
+  // Cheek blush for females
   if (isFemale) {
-    // Long hair
-    cx.beginPath(); cx.arc(cx0, headY - headR * 0.15, headR * 1.05, Math.PI, Math.PI * 2); cx.fill();
-    cx.fillRect(cx0 - headR * 1.05, headY - headR * 0.15, headR * 0.3, headR * 1.8);
-    cx.fillRect(cx0 + headR * 0.75, headY - headR * 0.15, headR * 0.3, headR * 1.8);
-    cx.fillRect(cx0 - headR * 1.05, headY - headR * 0.15, headR * 2.1, headR * 0.25);
-  } else {
-    // Short hair
-    cx.beginPath(); cx.arc(cx0, headY - headR * 0.15, headR * 1.02, Math.PI * 0.85, Math.PI * 2.15); cx.fill();
-    cx.fillRect(cx0 - headR, headY - headR * 0.2, headR * 2, headR * 0.3);
+    cx.fillStyle = 'rgba(200,120,100,.08)';
+    cx.beginPath(); cx.ellipse(cx0 - headR * .45, headY + headR * .15, headR * .18, headR * .12, 0, 0, Math.PI * 2); cx.fill();
+    cx.beginPath(); cx.ellipse(cx0 + headR * .45, headY + headR * .15, headR * .18, headR * .12, 0, 0, Math.PI * 2); cx.fill();
   }
 
-  // Eyes
-  cx.fillStyle = '#fff';
-  cx.beginPath(); cx.ellipse(cx0 - headR * 0.3, headY - headR * 0.1, 3.5, 2.5, 0, 0, Math.PI * 2); cx.fill();
-  cx.beginPath(); cx.ellipse(cx0 + headR * 0.3, headY - headR * 0.1, 3.5, 2.5, 0, 0, Math.PI * 2); cx.fill();
-  cx.fillStyle = '#2a1a0a';
-  cx.beginPath(); cx.arc(cx0 - headR * 0.3, headY - headR * 0.08, 2, 0, Math.PI * 2); cx.fill();
-  cx.beginPath(); cx.arc(cx0 + headR * 0.3, headY - headR * 0.08, 2, 0, Math.PI * 2); cx.fill();
-
-  // Mouth
-  cx.strokeStyle = '#8a6050';
-  cx.lineWidth = 1.5;
-  cx.beginPath(); cx.arc(cx0, headY + headR * 0.35, headR * 0.2, 0.1, Math.PI - 0.1); cx.stroke();
-
-  // Class weapon preview
+  // Class weapon preview (improved)
   if (cls) {
-    cx.strokeStyle = '#aaa'; cx.lineWidth = 3; cx.lineCap = 'round';
-    const wx = cx0 + shoulderW + 6;
-    const wy1 = bodyY - bodyH * 0.2;
-    const wy2 = wy1 - 25;
+    const wx = cx0 + shoulderW + 8;
+    const wy1 = bodyY - bodyH * 0.15;
+    const wy2 = wy1 - 28;
+    // Blade with gradient
+    const bladeGrad = cx.createLinearGradient(wx - 2, wy2, wx + 2, wy1);
+    bladeGrad.addColorStop(0, '#d0d0d0');
+    bladeGrad.addColorStop(0.3, '#b0b0b0');
+    bladeGrad.addColorStop(0.5, '#e0e0e0');
+    bladeGrad.addColorStop(1, '#999');
+    cx.strokeStyle = bladeGrad; cx.lineWidth = 3.5; cx.lineCap = 'round';
     cx.beginPath(); cx.moveTo(wx, wy1); cx.lineTo(wx, wy2); cx.stroke();
-    cx.fillStyle = '#5a3a1a';
-    cx.fillRect(wx - 3, wy1 - 2, 6, 10);
+    // Edge highlight
+    cx.strokeStyle = 'rgba(255,255,255,.4)'; cx.lineWidth = 1;
+    cx.beginPath(); cx.moveTo(wx - 1, wy1 - 2); cx.lineTo(wx - 1, wy2 + 2); cx.stroke();
+    // Handle
+    const handleGrad = cx.createLinearGradient(wx - 3, wy1, wx + 3, wy1 + 12);
+    handleGrad.addColorStop(0, '#6a4a25');
+    handleGrad.addColorStop(0.5, '#5a3a1a');
+    handleGrad.addColorStop(1, '#4a2a10');
+    cx.fillStyle = handleGrad;
+    cx.fillRect(wx - 3, wy1 - 1, 6, 12);
+    // Handle wrapping
+    cx.strokeStyle = 'rgba(90,60,30,.3)'; cx.lineWidth = .5;
+    for (let hi = 0; hi < 4; hi++) {
+      cx.beginPath(); cx.moveTo(wx - 3, wy1 + hi * 3); cx.lineTo(wx + 3, wy1 + hi * 3 + 1.5); cx.stroke();
+    }
     // Guard
+    const guardGrad = cx.createLinearGradient(wx - 8, wy2 + 2, wx + 8, wy2 + 5);
+    guardGrad.addColorStop(0, '#777');
+    guardGrad.addColorStop(0.5, '#aaa');
+    guardGrad.addColorStop(1, '#777');
+    cx.fillStyle = guardGrad;
+    cx.fillRect(wx - 8, wy2 + 1, 16, 4);
+    // Pommel
     cx.fillStyle = '#888';
-    cx.fillRect(wx - 6, wy2 + 2, 12, 3);
+    cx.beginPath(); cx.arc(wx, wy1 + 12, 3, 0, Math.PI * 2); cx.fill();
   }
 
   // Class icon
   if (cls) {
-    cx.font = '24px Segoe UI Emoji';
+    cx.font = '22px Segoe UI Emoji';
     cx.textAlign = 'center';
-    cx.fillText(cls.icon, cx0, H - 14);
+    cx.fillText(cls.icon, cx0, H - 12);
   }
 
   // Update name/class labels
