@@ -2455,48 +2455,49 @@ function update(dt) {
   // Ambient particle spawning per area
   ambientTimer -= dt;
   if (ambientTimer <= 0) {
-    const cx = cam.x + W / 2, cy = cam.y + H / 2;
+    const vw = C.width, vh = C.height;
+    const cx = cam.x + vw / 2, cy = cam.y + vh / 2;
     if (curArea === 'village') {
       // Fireflies near buildings
-      ambientParticles.push({x: cx + (rr()-.5)*W, y: cy + (rr()-.5)*H,
+      ambientParticles.push({x: cx + (rr()-.5)*vw, y: cy + (rr()-.5)*vh,
         vx:(rr()-.5)*.3, vy:(rr()-.5)*.3, life:180, maxLife:180,
         color:'#ffe080', size:2, type:'firefly', phase: rr()*Math.PI*2});
     } else if (curArea === 'forest') {
       // Falling leaves
-      ambientParticles.push({x: cx + (rr()-.5)*W, y: cy - H/2,
+      ambientParticles.push({x: cx + (rr()-.5)*vw, y: cy - vh/2,
         vx: .3 + rr()*.5, vy: .8 + rr()*.5, life:240, maxLife:240,
         color: ['#8a5a20','#6a8a30','#aa6a20','#c09030'][Math.floor(rr()*4)],
         size: 3 + rr()*2, type:'leaf', rot: rr()*Math.PI*2, rotSpd: (rr()-.5)*.05});
       // Fireflies
-      if (rr() < .3) ambientParticles.push({x: cx + (rr()-.5)*W, y: cy + (rr()-.5)*H,
+      if (rr() < .3) ambientParticles.push({x: cx + (rr()-.5)*vw, y: cy + (rr()-.5)*vh,
         vx:(rr()-.5)*.2, vy:(rr()-.5)*.2, life:200, maxLife:200,
         color:'#80ff80', size:2.5, type:'firefly', phase: rr()*Math.PI*2});
     } else if (curArea === 'swamp') {
       // Fog wisps
-      ambientParticles.push({x: cx + (rr()-.5)*W, y: cy + (rr()-.5)*H,
+      ambientParticles.push({x: cx + (rr()-.5)*vw, y: cy + (rr()-.5)*vh,
         vx: .1 + rr()*.3, vy: (rr()-.5)*.1, life:300, maxLife:300,
         color:'rgba(100,140,80,.15)', size: 20 + rr()*30, type:'fog'});
       // Bubbles from water
-      if (rr() < .4) ambientParticles.push({x: cx + (rr()-.5)*W, y: cy + (rr()-.5)*H,
+      if (rr() < .4) ambientParticles.push({x: cx + (rr()-.5)*vw, y: cy + (rr()-.5)*vh,
         vx: 0, vy: -.3 - rr()*.2, life:80, maxLife:80,
         color:'rgba(60,120,60,.4)', size: 2 + rr()*3, type:'bubble'});
     } else if (curArea === 'desert') {
       // Sand particles
-      ambientParticles.push({x: cx - W/2, y: cy + (rr()-.5)*H,
+      ambientParticles.push({x: cx - vw/2, y: cy + (rr()-.5)*vh,
         vx: 1.5 + rr()*2, vy: (rr()-.5)*.3, life:160, maxLife:160,
         color:'rgba(180,160,100,.3)', size: 1.5 + rr()*2, type:'sand'});
     } else if (curArea === 'dungeon') {
       // Floating embers
-      ambientParticles.push({x: cx + (rr()-.5)*W, y: cy + H/2,
+      ambientParticles.push({x: cx + (rr()-.5)*vw, y: cy + vh/2,
         vx:(rr()-.5)*.5, vy: -.5 - rr()*.5, life:200, maxLife:200,
         color: rr() < .5 ? '#ff6020' : '#ff9040', size: 1.5 + rr()*2, type:'ember'});
       // Dust motes
-      if (rr() < .4) ambientParticles.push({x: cx + (rr()-.5)*W, y: cy + (rr()-.5)*H,
+      if (rr() < .4) ambientParticles.push({x: cx + (rr()-.5)*vw, y: cy + (rr()-.5)*vh,
         vx:(rr()-.5)*.2, vy:(rr()-.5)*.1, life:250, maxLife:250,
         color:'rgba(160,140,120,.2)', size: 1 + rr()*1.5, type:'dust'});
     } else if (curArea === 'castle') {
       // Banner flags dust / sparkle
-      if (rr() < .5) ambientParticles.push({x: cx + (rr()-.5)*W, y: cy + (rr()-.5)*H,
+      if (rr() < .5) ambientParticles.push({x: cx + (rr()-.5)*vw, y: cy + (rr()-.5)*vh,
         vx:(rr()-.5)*.3, vy: -.2 - rr()*.2, life:120, maxLife:120,
         color:'rgba(200,180,100,.3)', size: 2 + rr()*2, type:'sparkle'});
     }
@@ -2525,9 +2526,9 @@ function update(dt) {
     if (weatherTimer <= 0) {
       for (let i = 0; i < 3; i++) {
         if (curArea === 'swamp') {
-          weatherDrops.push({x: rr()*W, y: -5, vy: 8 + rr()*6, len: 8 + rr()*8, life: 40});
+          weatherDrops.push({x: rr()*C.width, y: -5, vy: 8 + rr()*6, len: 8 + rr()*8, life: 40});
         } else {
-          weatherDrops.push({x: -5, y: rr()*H, vx: 10 + rr()*8, life: 50});
+          weatherDrops.push({x: -5, y: rr()*C.height, vx: 10 + rr()*8, life: 50});
         }
       }
       weatherTimer = .02;
@@ -2537,7 +2538,7 @@ function update(dt) {
     const wd = weatherDrops[i];
     if (wd.vy) wd.y += wd.vy; else wd.x += wd.vx;
     wd.life--;
-    if (wd.life <= 0 || wd.y > H + 10 || wd.x > W + 10) weatherDrops.splice(i, 1);
+    if (wd.life <= 0 || wd.y > C.height + 10 || wd.x > C.width + 10) weatherDrops.splice(i, 1);
   }
   if (weatherDrops.length > 200) weatherDrops.splice(0, weatherDrops.length - 200);
 
