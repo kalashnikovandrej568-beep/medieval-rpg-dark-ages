@@ -3522,13 +3522,37 @@ window.unassignSlave = idx => {
 window.openProperties = openProperties;
 
 // ===== GAME LOOP =====
+let _lastError = '';
 function gameLoop(ts) {
   requestAnimationFrame(gameLoop);
   const dt = Math.min((ts - lastTime) / 1000, .05);
   lastTime = ts;
   if (gameStarted && G.running) {
-    update(dt);
-    render();
+    try {
+      update(dt);
+    } catch(e) {
+      _lastError = 'UPDATE: ' + e.message + ' @ ' + (e.stack||'').split('\n')[1];
+    }
+    try {
+      render();
+    } catch(e) {
+      _lastError = 'RENDER: ' + e.message + ' @ ' + (e.stack||'').split('\n')[1];
+      // Emergency restore canvas state
+      try { X.restore(); } catch(_){}
+      X.globalAlpha = 1;
+    }
+    if (_lastError) {
+      X.save();
+      X.setTransform(1,0,0,1,0,0);
+      X.globalAlpha = 1;
+      X.fillStyle = 'rgba(200,0,0,.85)';
+      X.fillRect(0, C.height - 50, C.width, 50);
+      X.fillStyle = '#fff';
+      X.font = '13px monospace';
+      X.textAlign = 'left';
+      X.fillText('ERROR: ' + _lastError, 10, C.height - 28);
+      X.restore();
+    }
   }
 }
 
