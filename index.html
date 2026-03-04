@@ -572,6 +572,14 @@ function generateSlave(traderType) {
     hairColor, skinColor, bodyColor, bustSize,
     desc: `${genderIcon} ${race.icon}${race.name} • ${age} лет • ${trait1}, ${trait2}`,
     assignedTo: null, // property uid or null
+    equippedWeapon: null, // ITEMS key or null
+    equippedArmor: null,  // ITEMS key or null
+    // Actual position for AI movement
+    wx: 0, wy: 0,
+    curHp: hpStat, // current HP (can take damage)
+    maxHp: hpStat,
+    state: 'follow', // follow | attack | flee
+    targetEnemy: null,
   };
 }
 
@@ -597,6 +605,30 @@ function getTraderInventory(traderId) {
     refreshTraderInventory(traderId);
   }
   return traderInventories[traderId];
+}
+
+// ===== SLAVE EQUIPMENT HELPERS =====
+const RANGED_WTYPES = ['bow','staff']; // weapon types that make slave ranged
+function isSlaveRanged(s) {
+  if (s.equippedWeapon) {
+    const w = ITEMS[s.equippedWeapon];
+    if (w) return RANGED_WTYPES.includes(w.wtype);
+  }
+  return s.isRanged; // fallback to innate
+}
+function isSlaveFighter(s) {
+  return s.fighter || !!s.equippedWeapon;
+}
+function getSlaveAtk(s) {
+  let a = s.atk || 0;
+  if (s.equippedWeapon) { const w = ITEMS[s.equippedWeapon]; if (w) a += w.atk; }
+  if (!s.fighter && s.equippedWeapon) a += Math.floor(s.str * 0.5 + 3); // non-fighters get base atk from str
+  return Math.max(1, a);
+}
+function getSlaveDef(s) {
+  let d = s.def || 0;
+  if (s.equippedArmor) { const ar = ITEMS[s.equippedArmor]; if (ar) d += ar.def; }
+  return d;
 }
 
 // ===== PROPERTIES / BUSINESSES =====
@@ -775,11 +807,9 @@ function loadArea(areaId) {
       {x:v.x+870, y:v.y+310, r:11, name:'Работорговец', color:'#5a3020', dialog:'slave', traderId:'village_trader'},
       {x:v.x+745, y:v.y+560, r:11, name:'Кузнец', color:'#705030', dialog:'trade'},
       {x:v.x+480, y:v.y+530, r:11, name:'Староста', color:'#6a6040', dialog:'property'},
-      {x:v.x+400, y:v.y+400, r:11, name:'Староста Борис', color:'#7a7050', dialog:'quest', questId:'q_rats', skinColor:'#d4a878', hairColor:'#6a4830', gender:'m'},
-      {x:v.x+420, y:v.y+430, r:10, name:'Староста Борис', color:'#7a7050', dialog:'quest', questId:'q_boss_rats', skinColor:'#d4a878', hairColor:'#6a4830', gender:'m'},
+      {x:v.x+400, y:v.y+400, r:11, name:'Староста Борис', color:'#7a7050', dialog:'quest', questIds:['q_rats','q_boss_rats'], skinColor:'#d4a878', hairColor:'#6a4830', gender:'m'},
       {x:v.x+180, y:v.y+350, r:11, name:'Капитан стражи', color:'#5a5a70', dialog:'quest', questId:'q_bandits', skinColor:'#e0b888', hairColor:'#2a1a0a', gender:'m'},
-      {x:v.x+550, y:v.y+680, r:11, name:'Травница Глафира', color:'#4a7050', dialog:'quest', questId:'q_spider', skinColor:'#f0dcc0', hairColor:'#8a2020', gender:'f'},
-      {x:v.x+570, y:v.y+710, r:10, name:'Травница Глафира', color:'#4a7050', dialog:'quest', questId:'q_boss_swamp', skinColor:'#f0dcc0', hairColor:'#8a2020', gender:'f'},
+      {x:v.x+550, y:v.y+680, r:11, name:'Травница Глафира', color:'#4a7050', dialog:'quest', questIds:['q_spider','q_boss_swamp'], skinColor:'#f0dcc0', hairColor:'#8a2020', gender:'f'},
     );
     for(let i=0;i<6;i++) spawnEnemy('rat', v.x+200+rr()*1200, v.y+200+rr()*900);
     for(let i=0;i<3;i++) spawnEnemy('wolf', v.x+400+rr()*800, v.y+100+rr()*1000);
@@ -795,8 +825,7 @@ function loadArea(areaId) {
     for(let i=0;i<6;i++) spawnEnemy('goblin', f.x+400+rr()*3400, f.y+200+rr()*1100);
     for(let i=0;i<5;i++) spawnEnemy('bear', f.x+500+rr()*3200, f.y+200+rr()*1000);
     for(let i=0;i<3;i++) spawnEnemy('orc', f.x+600+rr()*3000, f.y+300+rr()*900);
-    npcs.push({x:f.x+300, y:f.y+500, r:11, name:'Охотник Прохор', color:'#5a7040', dialog:'quest', questId:'q_wolves', skinColor:'#c09060', hairColor:'#4a3020', gender:'m'});
-    npcs.push({x:f.x+330, y:f.y+530, r:10, name:'Охотник Прохор', color:'#5a7040', dialog:'quest', questId:'q_boss_forest', skinColor:'#c09060', hairColor:'#4a3020', gender:'m'});
+    npcs.push({x:f.x+300, y:f.y+500, r:11, name:'Охотник Прохор', color:'#5a7040', dialog:'quest', questIds:['q_wolves','q_boss_forest'], skinColor:'#c09060', hairColor:'#4a3020', gender:'m'});
     portals.push({x:f.x+3600, y:f.y+300, w:50, h:35, to:'dungeon', sx:50, sy:AREAS.dungeon.h*TW-80, label:'🕳️ Подземелье', cave:true});
     for(let i=0;i<250;i++) terrainTrees.push({x:f.x+rr()*f.w, y:f.y+rr()*f.h, s:12+rr()*16, type:rr()>.3?'pine':'oak'});
     for(let i=0;i<30;i++) terrainRocks.push({x:f.x+rr()*f.w, y:f.y+rr()*f.h, s:5+rr()*10});
@@ -834,10 +863,8 @@ function loadArea(areaId) {
       {x:c.x+430, y:c.y+580, r:11, name:'Работорговец', color:'#504030', dialog:'slave', traderId:'castle_trader'},
       {x:c.x+280, y:c.y+500, r:11, name:'Управляющий', color:'#6a6080', dialog:'property'},
       {x:c.x+550, y:c.y+500, r:11, name:'Комендант Игнат', color:'#606080', dialog:'quest', questId:'q_orcs', skinColor:'#d4a878', hairColor:'#1a1a1a', gender:'m'},
-      {x:c.x+750, y:c.y+280, r:11, name:'Маг Захар', color:'#5a4080', dialog:'quest', questId:'q_knight', skinColor:'#f0dcc0', hairColor:'#c4a060', gender:'m'},
-      {x:c.x+770, y:c.y+310, r:10, name:'Маг Захар', color:'#5a4080', dialog:'quest', questId:'q_boss_sand', skinColor:'#f0dcc0', hairColor:'#c4a060', gender:'m'},
-      {x:c.x+850, y:c.y+500, r:11, name:'Король', color:'#8a7030', dialog:'quest', questId:'q_dragon', skinColor:'#e0b888', hairColor:'#6a4830', gender:'m'},
-      {x:c.x+870, y:c.y+530, r:10, name:'Король', color:'#8a7030', dialog:'quest', questId:'q_boss_dragon', skinColor:'#e0b888', hairColor:'#6a4830', gender:'m'},
+      {x:c.x+750, y:c.y+280, r:11, name:'Маг Захар', color:'#5a4080', dialog:'quest', questIds:['q_knight','q_boss_sand'], skinColor:'#f0dcc0', hairColor:'#c4a060', gender:'m'},
+      {x:c.x+850, y:c.y+500, r:11, name:'Король', color:'#8a7030', dialog:'quest', questIds:['q_dragon','q_boss_dragon'], skinColor:'#e0b888', hairColor:'#6a4830', gender:'m'},
       {x:c.x+500, y:c.y+350, r:11, name:'Монах Лука', color:'#6a6050', dialog:'quest', questId:'q_skeletons', skinColor:'#e8c8a0', hairColor:'#1a1a1a', gender:'m'},
     );
     for(let i=0;i<4;i++) spawnEnemy('knight', c.x+600+rr()*1200, c.y+200+rr()*1000);
@@ -873,8 +900,7 @@ function loadArea(areaId) {
     for(let i=0;i<4;i++) spawnEnemy('knight', m.x+400+rr()*2400, m.y+200+rr()*1200);
     for(let i=0;i<4;i++) spawnEnemy('troll', m.x+500+rr()*2200, m.y+200+rr()*1100);
     for(let i=0;i<3;i++) spawnEnemy('demon', m.x+600+rr()*2000, m.y+300+rr()*1000);
-    npcs.push({x:m.x+500, y:m.y+900, r:11, name:'Отшельник', color:'#6a6a5a', dialog:'trade', skinColor:'#c09060', hairColor:'#aaa', gender:'m'});
-    npcs.push({x:m.x+530, y:m.y+930, r:10, name:'Отшельник', color:'#6a6a5a', dialog:'quest', questId:'q_boss_golem', skinColor:'#c09060', hairColor:'#aaa', gender:'m'});
+    npcs.push({x:m.x+500, y:m.y+900, r:11, name:'Отшельник', color:'#6a6a5a', dialog:'quest', questIds:['q_boss_golem'], skinColor:'#c09060', hairColor:'#aaa', gender:'m'});
     for(let i=0;i<25;i++) terrainTrees.push({x:m.x+rr()*m.w, y:m.y+rr()*m.h, s:10+rr()*8, type:'pine'});
     for(let i=0;i<80;i++) terrainRocks.push({x:m.x+rr()*m.w, y:m.y+rr()*m.h, s:8+rr()*16});
     worldStructures.push({x:m.x+1600, y:m.y+600, ...STRUCTURES.altar, structType:'altar', biome:'mountains'});
@@ -1621,7 +1647,7 @@ function drawNPC(n) {
   X.fillStyle = nameCol; X.fillText(n.name, nx, headY - headR - 6);
   // Quest marker
   if (n.dialog === 'quest') {
-    const q = QUESTS.find(qq => qq.id === n.questId);
+    const q = getActiveQuestForNpc(n);
     if (q) {
       const isActive = G.quests && G.quests.includes(q.id);
       const isDone = G.questsDone && G.questsDone.includes(q.id);
@@ -2160,14 +2186,15 @@ function drawPlayer() {
 }
 
 function drawFollower(s, i) {
-  const angle = performance.now() * .001 + i * 2.1;
-  const fx = G.x + Math.cos(angle) * 38;
-  const fy = G.y + Math.sin(angle) * 38 + 8;
+  const fx = s.wx || G.x;
+  const fy = s.wy || G.y;
+  const isMoving = Math.abs((s._prevX||fx) - fx) > 0.3 || Math.abs((s._prevY||fy) - fy) > 0.3;
   const bobAnim = Math.sin(performance.now() * .008 + i * 1.5) * 1.5;
   const isFemale = s.gender === 'f';
   const skinCol = s.skinColor || '#d0b080';
   const hairCol = s.hairColor || '#4a3020';
-  const bodyCol = s.bodyColor || (s.ranged ? '#5a5a70' : '#5a6a5a');
+  const rng = isSlaveRanged(s);
+  const bodyCol = s.bodyColor || (rng ? '#5a5a70' : '#5a6a5a');
   const r = 9, headR = 3.8;
 
   // Shadow
@@ -2175,7 +2202,7 @@ function drawFollower(s, i) {
   X.beginPath(); X.ellipse(fx, fy + r + 2, r * .85, 2.5, 0, 0, Math.PI * 2); X.fill();
 
   // Legs (anatomical mini)
-  const legOff = Math.sin(performance.now() * .01 + i) * 2;
+  const legOff = isMoving ? Math.sin(performance.now() * .01 + i) * 3 : 0;
   drawMiniLeg(X, fx - 1.5, fy + r - 2, 8, 2.8, legOff);
   drawMiniLeg(X, fx + 1.5, fy + r - 2, 8, 2.8, -legOff);
 
@@ -2201,6 +2228,17 @@ function drawFollower(s, i) {
   // Belt
   X.fillStyle = '#3a2518';
   X.fillRect(fx - r*.55, fy + r*.3 + bobAnim, r*1.1, 1.5);
+
+  // Armor overlay if equipped
+  if (s.equippedArmor) {
+    const ar = ITEMS[s.equippedArmor];
+    if (ar) {
+      const armorCol = ar.def > 15 ? '#7070a0' : (ar.def > 8 ? '#888898' : '#8a7a60');
+      X.fillStyle = armorCol; X.globalAlpha = 0.35;
+      X.beginPath(); X.ellipse(fx, fy + bobAnim, r*.55, r*.5, 0, 0, Math.PI*2); X.fill();
+      X.globalAlpha = 1;
+    }
+  }
 
   // Breast rendering for female followers
   if (isFemale) {
@@ -2232,16 +2270,21 @@ function drawFollower(s, i) {
   drawRealisticHair(X, fx, headY, headR, hairCol, isFemale);
   drawRealisticFace(X, fx, headY, headR, isFemale, '#5a7a50');
 
-  // Weapon
-  if (s.ranged) {
-    // Bow
+  // Weapon drawing based on equipped or innate
+  const eqWep = s.equippedWeapon ? ITEMS[s.equippedWeapon] : null;
+  const wtype = eqWep ? eqWep.wtype : (rng ? 'bow' : 'sword');
+  if (wtype === 'bow') {
     X.strokeStyle = '#8a7050'; X.lineWidth = 1.5;
     X.beginPath(); X.arc(fx + r, fy - 2 + bobAnim, 7, -.8, .8); X.stroke();
     X.strokeStyle = '#bba880'; X.lineWidth = .5;
     X.beginPath(); X.moveTo(fx + r + Math.cos(-.8)*7, fy - 2 + Math.sin(-.8)*7 + bobAnim);
     X.lineTo(fx + r + Math.cos(.8)*7, fy - 2 + Math.sin(.8)*7 + bobAnim); X.stroke();
+  } else if (wtype === 'staff') {
+    X.strokeStyle = '#7a5a30'; X.lineWidth = 2; X.lineCap = 'round';
+    X.beginPath(); X.moveTo(fx + r*.4, fy + r*.3 + bobAnim); X.lineTo(fx + r*.4, fy - r*1.3 + bobAnim); X.stroke();
+    X.fillStyle = eqWep && eqWep.atk > 15 ? '#a060f0' : '#60a0f0';
+    X.beginPath(); X.arc(fx + r*.4, fy - r*1.3 + bobAnim, 2.5, 0, Math.PI*2); X.fill();
   } else {
-    // Sword
     X.strokeStyle = '#aaa'; X.lineWidth = 1.5; X.lineCap = 'round';
     X.beginPath(); X.moveTo(fx + r*.6, fy + 2 + bobAnim); X.lineTo(fx + r*1.4, fy - 6 + bobAnim); X.stroke();
     X.strokeStyle = 'rgba(255,255,255,.3)'; X.lineWidth = .5;
@@ -2250,10 +2293,29 @@ function drawFollower(s, i) {
     X.beginPath(); X.arc(fx + r*.6, fy + 2 + bobAnim, 1.5, 0, Math.PI*2); X.fill();
   }
 
+  // HP bar (if damaged)
+  const curHp = s.curHp != null ? s.curHp : s.hp;
+  const maxHp = s.maxHp || s.hp;
+  if (curHp < maxHp && maxHp > 0) {
+    const bw = 18, bh = 2.5, bx = fx - bw/2, by = headY - headR - 8;
+    X.fillStyle = '#300'; X.fillRect(bx, by, bw, bh);
+    const pct = Math.max(0, curHp / maxHp);
+    X.fillStyle = pct > 0.5 ? '#0a0' : (pct > 0.2 ? '#aa0' : '#a00');
+    X.fillRect(bx, by, bw * pct, bh);
+    X.strokeStyle = '#000'; X.lineWidth = 0.5; X.strokeRect(bx, by, bw, bh);
+  }
+
+  // State indicator
+  if (s.state === 'flee') {
+    X.font = '7px Segoe UI'; X.textAlign = 'center';
+    X.fillStyle = '#f44'; X.fillText('💨', fx + 8, headY - headR - 2);
+  }
+
   // Name (small)
   X.font = '8px Segoe UI'; X.textAlign = 'center';
   X.fillStyle = '#aaa';
-  X.fillText(s.firstName || s.name, fx, headY - headR - 3);
+  X.fillText(s.firstName || s.name, fx, headY - headR - (curHp < maxHp ? 12 : 3));
+  s._prevX = fx; s._prevY = fy;
 }
 
 function drawItemOnGround(it) {
@@ -2308,7 +2370,10 @@ function render() {
   npcs.forEach(n => drawables.push({y: n.y, draw: () => drawNPC(n)}));
   enemies.forEach(e => { if (e.hp > 0) drawables.push({y: e.y, draw: () => drawEnemy(e)}); });
   drawables.push({y: G.y, draw: drawPlayer});
-  G.slaves.filter(s => s.fighter).forEach((s, i) => drawables.push({y: G.y + 20, draw: () => drawFollower(s, i)}));
+  G.slaves.filter(s => isSlaveFighter(s)).forEach((s, i) => {
+    if (!s.wx && !s.wy) { s.wx = G.x; s.wy = G.y + 20; } // init pos
+    drawables.push({y: s.wy, draw: () => drawFollower(s, i)});
+  });
 
   // Particles
   particles.forEach(p => drawables.push({y: p.y, draw: () => {
@@ -2638,28 +2703,171 @@ function update(dt) {
     e.y = Math.max(e.r, Math.min(ah - e.r, e.y));
   });
 
-  // Party fighters
-  G.slaves.filter(s => s.fighter).forEach(s => {
-    const targets = enemies.filter(e => e.hp > 0 && Math.hypot(e.x - G.x, e.y - G.y) < (s.ranged ? 200 : 120));
-    const target = targets.sort((a, b) => a.hp - b.hp)[0];
-    if (target) {
-      if (!s._atkTimer) s._atkTimer = 0;
-      s._atkTimer -= dt;
-      if (s._atkTimer <= 0) {
-        const dmg = Math.max(1, s.atk - target.def + Math.floor(rr() * 4));
-        target.hp -= dmg;
-        target.flashTimer = 6;
-        target.state = 'chase';
-        floatText(target.x, target.y - target.r - 5, dmg, s.ranged ? '#88f' : '#8b8');
-        s._atkTimer = s.ranged ? 1.5 : 1.0;
-        if (s.ranged) {
-          // Arrow particle
-          const a = Math.atan2(target.y - G.y, target.x - G.x);
-          particles.push({x: G.x + Math.cos(a) * 40, y: G.y + Math.sin(a) * 40,
-            vx: Math.cos(a) * 6, vy: Math.sin(a) * 6, life: 15, maxLife: 15, color: s.atk > 15 ? '#a0f' : '#ff8', size: 3});
-        }
-        if (target.hp <= 0) killEnemy(target);
+  // ═══ SLAVE AI SYSTEM ═══
+  const fightSlaves = G.slaves.filter(s => isSlaveFighter(s));
+  const MELEE_AGGRO = 150, RANGED_AGGRO = 250, FOLLOW_DIST = 45, FLEE_RANGE = 80;
+  fightSlaves.forEach((s, idx) => {
+    if (!s.wx) { s.wx = G.x; s.wy = G.y; }
+    if (!s._atkTimer) s._atkTimer = 0;
+    if (!s.state) s.state = 'follow';
+    if (s.curHp == null) { s.curHp = s.maxHp || s.hp; s.maxHp = s.maxHp || s.hp; }
+    s._atkTimer -= dt;
+
+    const rng = isSlaveRanged(s);
+    const sAtk = getSlaveAtk(s);
+    const sDef = getSlaveDef(s);
+    const aggroRange = rng ? RANGED_AGGRO : MELEE_AGGRO;
+    const fleeThresh = (s.maxHp || s.hp) * 0.1;
+
+    // Find nearest enemy to slave
+    let nearestE = null, nearestDist = 99999;
+    enemies.forEach(e => {
+      if (e.hp <= 0) return;
+      const d = Math.hypot(e.x - s.wx, e.y - s.wy);
+      if (d < nearestDist) { nearestDist = d; nearestE = e; }
+    });
+    // Also consider enemies near player
+    enemies.forEach(e => {
+      if (e.hp <= 0) return;
+      const d = Math.hypot(e.x - G.x, e.y - G.y);
+      if (d < aggroRange && d < nearestDist * 0.7) { nearestDist = d; nearestE = e; }
+    });
+
+    // State transitions
+    if (s.curHp <= fleeThresh && s.state !== 'follow') {
+      s.state = 'flee';
+    } else if (s.state === 'flee' && s.curHp > fleeThresh * 2) {
+      s.state = 'follow'; // recovered enough
+    }
+
+    const distToPlayer = Math.hypot(s.wx - G.x, s.wy - G.y);
+    if (distToPlayer > 350) { s.wx = G.x; s.wy = G.y; s.state = 'follow'; } // teleport if too far
+
+    // Movement speed
+    const spd = 2.8 * dt * 60;
+
+    if (s.state === 'flee') {
+      // Run back behind player
+      const behindX = G.x - Math.cos(G.facing) * (FOLLOW_DIST + idx * 15);
+      const behindY = G.y - Math.sin(G.facing) * (FOLLOW_DIST + idx * 15);
+      const dBehind = Math.hypot(s.wx - behindX, s.wy - behindY);
+      if (dBehind > 5) {
+        const a = Math.atan2(behindY - s.wy, behindX - s.wx);
+        s.wx += Math.cos(a) * spd * 1.3; s.wy += Math.sin(a) * spd * 1.3;
       }
+      // HP regen while fleeing (slow)
+      if (s.curHp < s.maxHp) s.curHp = Math.min(s.maxHp, s.curHp + dt * 2);
+    } else if (nearestE && (nearestDist < aggroRange || (nearestE && Math.hypot(nearestE.x - G.x, nearestE.y - G.y) < aggroRange))) {
+      s.state = 'attack';
+      s.targetEnemy = nearestE;
+      if (rng) {
+        // Ranged: stay behind player, shoot from distance
+        const idealDist = 60 + idx * 12;
+        const behindX = G.x - Math.cos(G.facing) * idealDist;
+        const behindY = G.y - Math.sin(G.facing) * idealDist;
+        const dBehind = Math.hypot(s.wx - behindX, s.wy - behindY);
+        if (dBehind > 10) {
+          const a = Math.atan2(behindY - s.wy, behindX - s.wx);
+          s.wx += Math.cos(a) * spd; s.wy += Math.sin(a) * spd;
+        }
+        // Ranged attack
+        const dToE = Math.hypot(nearestE.x - s.wx, nearestE.y - s.wy);
+        if (dToE < RANGED_AGGRO && s._atkTimer <= 0) {
+          const dmg = Math.max(1, sAtk - nearestE.def + Math.floor(rr() * 4));
+          nearestE.hp -= dmg; nearestE.flashTimer = 6; nearestE.state = 'chase';
+          floatText(nearestE.x, nearestE.y - nearestE.r - 5, dmg, '#88f');
+          s._atkTimer = 1.5;
+          const a = Math.atan2(nearestE.y - s.wy, nearestE.x - s.wx);
+          const pColor = sAtk > 15 ? '#a0f' : '#ff8';
+          particles.push({x: s.wx + Math.cos(a) * 12, y: s.wy + Math.sin(a) * 12,
+            vx: Math.cos(a) * 6, vy: Math.sin(a) * 6, life: 15, maxLife: 15, color: pColor, size: 3});
+          if (nearestE.hp <= 0) killEnemy(nearestE);
+        }
+      } else {
+        // Melee: charge at enemy
+        const dToE = Math.hypot(nearestE.x - s.wx, nearestE.y - s.wy);
+        if (dToE > 15) {
+          const a = Math.atan2(nearestE.y - s.wy, nearestE.x - s.wx);
+          s.wx += Math.cos(a) * spd * 1.2; s.wy += Math.sin(a) * spd * 1.2;
+        }
+        // Melee attack
+        if (dToE < 20 && s._atkTimer <= 0) {
+          const dmg = Math.max(1, sAtk - nearestE.def + Math.floor(rr() * 4));
+          nearestE.hp -= dmg; nearestE.flashTimer = 6; nearestE.state = 'chase';
+          floatText(nearestE.x, nearestE.y - nearestE.r - 5, dmg, '#8b8');
+          s._atkTimer = 1.0;
+          if (nearestE.hp <= 0) killEnemy(nearestE);
+        }
+      }
+    } else {
+      // No enemies: follow behind player in formation
+      s.state = 'follow';
+      s.targetEnemy = null;
+      const angle = G.facing + Math.PI; // behind player
+      const spread = (idx - (fightSlaves.length - 1) / 2) * 0.6; // spread out
+      const fAngle = angle + spread;
+      const idealX = G.x + Math.cos(fAngle) * (FOLLOW_DIST + idx * 8);
+      const idealY = G.y + Math.sin(fAngle) * (FOLLOW_DIST + idx * 8);
+      const df = Math.hypot(s.wx - idealX, s.wy - idealY);
+      if (df > 8) {
+        const a = Math.atan2(idealY - s.wy, idealX - s.wx);
+        const followSpeed = df > 60 ? spd * 1.5 : spd;
+        s.wx += Math.cos(a) * followSpeed; s.wy += Math.sin(a) * followSpeed;
+      }
+      // Slow HP regen when following
+      if (s.curHp < s.maxHp) s.curHp = Math.min(s.maxHp, s.curHp + dt * 1);
+    }
+
+    // Clamp to area
+    s.wx = Math.max(10, Math.min(aw - 10, s.wx));
+    s.wy = Math.max(10, Math.min(ah - 10, s.wy));
+  });
+
+  // Enemies can damage slaves
+  enemies.forEach(e => {
+    if (e.hp <= 0 || e.state !== 'chase') return;
+    fightSlaves.forEach(s => {
+      if (s.state === 'follow' && !s.fighter) return; // workers don't get hit unless fighting
+      const dToS = Math.hypot(e.x - s.wx, e.y - s.wy);
+      if (dToS < 18) {
+        if (!e._slaveDmgTimer) e._slaveDmgTimer = 0;
+        e._slaveDmgTimer -= dt;
+        if (e._slaveDmgTimer <= 0) {
+          const dmg = Math.max(1, e.atk - getSlaveDef(s) + Math.floor(rr() * 3));
+          s.curHp -= dmg;
+          floatText(s.wx, s.wy - 15, dmg, '#f66');
+          e._slaveDmgTimer = 1.0;
+          if (s.curHp <= 0) {
+            s.curHp = 0; s.state = 'flee';
+            floatText(s.wx, s.wy - 25, `${s.firstName} ранен!`, '#f44');
+            s.curHp = 1; // don't die, just flee with 1 hp
+          }
+        }
+      }
+    });
+  });
+
+  // Healer slaves
+  G.slaves.filter(s => s.healer).forEach(s => {
+    if (!s._healTimer) s._healTimer = 0;
+    s._healTimer -= dt;
+    if (s._healTimer <= 0 && s.healAmt > 0) {
+      // Heal player
+      if (G.hp < G.maxHp) {
+        const heal = Math.min(s.healAmt, G.maxHp - G.hp);
+        G.hp += heal;
+        floatText(G.x, G.y - 20, `+${heal}`, '#8f8');
+        s._healTimer = 4.0;
+      }
+      // Heal injured slaves
+      fightSlaves.forEach(fs => {
+        if (fs.curHp < fs.maxHp * 0.8 && s._healTimer <= 0) {
+          const heal = Math.min(s.healAmt, fs.maxHp - fs.curHp);
+          fs.curHp += heal;
+          floatText(fs.wx, fs.wy - 15, `+${heal}`, '#8f8');
+          s._healTimer = 4.0;
+        }
+      });
     }
   });
 
@@ -3222,10 +3430,10 @@ function closeAllOv() { document.querySelectorAll('.ov.show').forEach(o => o.cla
 
 // ===== SHOP =====
 function getShopItems() {
-  const base = [ITEMS.bread, ITEMS.meat, ITEMS.potion, ITEMS.stam_pot, ITEMS.rusty_sword, ITEMS.leather];
+  const base = [ITEMS.bread, ITEMS.meat, ITEMS.potion, ITEMS.stam_pot, ITEMS.rusty_sword, ITEMS.leather, ITEMS.hunting_bow, ITEMS.staff];
   const shopBiome = curBiome ? curBiome.id : null;
-  if (shopBiome === 'castle') base.push(ITEMS.steel_sword, ITEMS.great_axe, ITEMS.plate, ITEMS.elixir, ITEMS.hero_blade, ITEMS.dragon_armor, ITEMS.dark_scythe);
-  else base.push(ITEMS.iron_sword, ITEMS.chain);
+  if (shopBiome === 'castle') base.push(ITEMS.steel_sword, ITEMS.great_axe, ITEMS.plate, ITEMS.elixir, ITEMS.hero_blade, ITEMS.dragon_armor, ITEMS.dark_scythe, ITEMS.war_bow, ITEMS.magic_staff);
+  else base.push(ITEMS.iron_sword, ITEMS.chain, ITEMS.dagger, ITEMS.mace);
   return base;
 }
 
@@ -3478,8 +3686,29 @@ function talkNPC(npc) {
 }
 
 // ===== QUEST DIALOG =====
+function getActiveQuestForNpc(npc) {
+  const ids = npc.questIds || (npc.questId ? [npc.questId] : []);
+  // 1. Active quest in progress
+  for (const qid of ids) {
+    if (G.quests.includes(qid)) return QUESTS.find(qq => qq.id === qid);
+  }
+  // 2. First quest not done + prereqs met
+  for (const qid of ids) {
+    if (G.questsDone.includes(qid)) continue;
+    const q = QUESTS.find(qq => qq.id === qid);
+    if (!q) continue;
+    if (q.prereq && !G.questsDone.includes(q.prereq)) continue;
+    return q;
+  }
+  // 3. Last done quest (for "already done" message)
+  for (let i = ids.length - 1; i >= 0; i--) {
+    if (G.questsDone.includes(ids[i])) return QUESTS.find(qq => qq.id === ids[i]);
+  }
+  return null;
+}
+
 function openQuestDialog(npc) {
-  const q = QUESTS.find(qq => qq.id === npc.questId);
+  const q = getActiveQuestForNpc(npc);
   if (!q) return;
   const isDone = G.questsDone.includes(q.id);
   const isActive = G.quests.includes(q.id);
@@ -3701,7 +3930,11 @@ function openParty() {
     G.slaves.forEach((s, i) => {
       const genderColor = s.gender === 'f' ? '#f8a' : '#8af';
       const assignedProp = s.assignedTo ? G.properties.find(p => p.uid === s.assignedTo) : null;
-      const assignedText = assignedProp ? `📍 ${PROPERTY_TYPES[assignedProp.typeId].icon} ${PROPERTY_TYPES[assignedProp.typeId].name}` : (s.fighter ? '📍 В отряде' : '📍 Без назначения');
+      const isFighterNow = isSlaveFighter(s);
+      const isRangedNow = isSlaveRanged(s);
+      const totalAtk = getSlaveAtk(s);
+      const totalDef = getSlaveDef(s);
+      const assignedText = assignedProp ? `📍 ${PROPERTY_TYPES[assignedProp.typeId].icon} ${PROPERTY_TYPES[assignedProp.typeId].name}` : (isFighterNow ? '📍 В отряде' : '📍 Без назначения');
 
       // Calculate effective income for this slave
       let effectiveInc = s.income || 0;
@@ -3713,27 +3946,62 @@ function openParty() {
       let effectiveUp = s.upkeep || 0;
       if (assignedProp && assignedProp.typeId === 'mansion') effectiveUp = Math.floor(effectiveUp * 0.5);
 
+      // HP bar
+      const curHpVal = s.curHp != null ? s.curHp : (s.maxHp || s.hp);
+      const maxHpVal = s.maxHp || s.hp;
+      const hpPct = maxHpVal > 0 ? Math.round(curHpVal / maxHpVal * 100) : 100;
+      const hpColor = hpPct > 50 ? '#4a4' : (hpPct > 20 ? '#aa4' : '#a44');
+
+      // Equipment info
+      const eqWep = s.equippedWeapon ? ITEMS[s.equippedWeapon] : null;
+      const eqArm = s.equippedArmor ? ITEMS[s.equippedArmor] : null;
+      const roleNow = isFighterNow ? (isRangedNow ? '🏹 Дальний бой' : '⚔️ Ближний бой') : (s.healer ? '💊 Целитель' : '🔧 Работник');
+
+      // Available weapons/armor in player inventory
+      const invWeapons = G.inv.filter(it => it.type === 'weapon');
+      const invArmors = G.inv.filter(it => it.type === 'armor');
+
       html += `<div class="card" style="padding:10px;margin-bottom:5px">
         <div style="display:flex;align-items:center;gap:10px">
           <div style="font-size:28px">${s.icon}</div>
           <div style="flex:1">
             <div class="nm">${s.name} <span style="color:${genderColor}">${s.genderIcon}</span> <span style="color:#888;font-size:11px">${s.age} лет</span></div>
-            <div class="ds">${s.roleDesc} • ${s.skill.icon} <span style="color:#c90">${s.starStr}</span></div>
+            <div class="ds">${roleNow} • ${s.skill.icon} <span style="color:#c90">${s.starStr}</span></div>
             <div style="font-size:10px;color:#888;margin-top:2px">${s.trait1}, ${s.trait2}</div>
-            <div style="font-size:10px;color:#666;font-style:italic;margin-top:1px">"${s.backstory}"</div>
           </div>
         </div>
         <div style="display:flex;gap:10px;align-items:center;margin-top:6px;font-size:11px;flex-wrap:wrap">
           <span style="color:#aaa">💪${s.str} 🏃${s.agi} ❤️${s.vit} 🗣️${s.chr}</span>
-          ${s.fighter ? `<span style="color:#8b8">⚔️${s.atk} 🛡️${s.def} ❤️${s.hp}</span>` : ''}
+          <span style="color:#8b8">⚔️${totalAtk} 🛡️${totalDef}</span>
+          ${maxHpVal > 0 ? `<span style="color:${hpColor}">❤️${Math.ceil(curHpVal)}/${maxHpVal}</span>` : ''}
           ${s.healer ? `<span style="color:#a8f">💊+${s.healAmt} HP</span>` : ''}
           ${effectiveInc > 0 ? `<span style="color:#a84">+${effectiveInc}💰/день</span>` : ''}
           <span style="color:#a44">-${effectiveUp}💰/день</span>
         </div>
+        <!-- Equipment section -->
+        <div style="margin-top:6px;padding:6px;background:rgba(0,0,0,.2);border-radius:4px;font-size:11px">
+          <div style="color:#d4a017;margin-bottom:4px">🎒 Снаряжение:</div>
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:3px">
+            <span style="color:#aaa;width:55px">Оружие:</span>
+            ${eqWep ? `<span style="color:#ccc">${eqWep.name} (⚔️+${eqWep.atk})</span> <button class="btn btn-r" style="font-size:10px;padding:1px 6px" onclick="unequipSlaveWeapon(${i})">✕</button>` : '<span style="color:#555">—</span>'}
+            ${!eqWep && invWeapons.length > 0 ? `<select style="font-size:10px;background:#2a2a30;color:#ccc;border:1px solid #444;padding:1px 3px;border-radius:3px" onchange="equipSlaveWeapon(${i}, this.value)">
+              <option value="">Выбрать...</option>
+              ${invWeapons.map(w => `<option value="${w.id}">${w.name} (⚔️+${w.atk}${RANGED_WTYPES.includes(w.wtype) ? ' 🏹дальн.' : ''})</option>`).join('')}
+            </select>` : ''}
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span style="color:#aaa;width:55px">Броня:</span>
+            ${eqArm ? `<span style="color:#ccc">${eqArm.name} (🛡️+${eqArm.def})</span> <button class="btn btn-r" style="font-size:10px;padding:1px 6px" onclick="unequipSlaveArmor(${i})">✕</button>` : '<span style="color:#555">—</span>'}
+            ${!eqArm && invArmors.length > 0 ? `<select style="font-size:10px;background:#2a2a30;color:#ccc;border:1px solid #444;padding:1px 3px;border-radius:3px" onchange="equipSlaveArmor(${i}, this.value)">
+              <option value="">Выбрать...</option>
+              ${invArmors.map(a => `<option value="${a.id}">${a.name} (🛡️+${a.def})</option>`).join('')}
+            </select>` : ''}
+          </div>
+        </div>
         <div style="display:flex;gap:6px;align-items:center;margin-top:6px">
           <span style="font-size:11px;color:#888">${assignedText}</span>
           <div style="flex:1"></div>
-          ${!s.fighter && G.properties.length > 0 ? `<select style="font-size:11px;background:#2a2a30;color:#ccc;border:1px solid #444;padding:2px 4px;border-radius:3px" onchange="assignSlaveToProperty(${i}, this.value)">
+          ${!isFighterNow && G.properties.length > 0 ? `<select style="font-size:11px;background:#2a2a30;color:#ccc;border:1px solid #444;padding:2px 4px;border-radius:3px" onchange="assignSlaveToProperty(${i}, this.value)">
             <option value="">Переназначить...</option>
             <option value="none" ${!s.assignedTo ? 'selected' : ''}>Без назначения</option>
             ${G.properties.map(p => {
@@ -3790,11 +4058,74 @@ window.assignSlaveToProperty = (slaveIdx, propUid) => {
 
 window.freeSlave2 = i => {
   const s = G.slaves[i]; if (!s) return;
+  // Return equipped items to inventory
+  if (s.equippedWeapon) {
+    const it = ITEMS[s.equippedWeapon];
+    if (it) { const ex = G.inv.find(v => v.id === it.id); if (ex) ex.qty = (ex.qty||1)+1; else G.inv.push({...it, qty:1}); }
+  }
+  if (s.equippedArmor) {
+    const it = ITEMS[s.equippedArmor];
+    if (it) { const ex = G.inv.find(v => v.id === it.id); if (ex) ex.qty = (ex.qty||1)+1; else G.inv.push({...it, qty:1}); }
+  }
   const ret = Math.floor(s.cost * .35);
   G.gold += ret;
   log(`Продан: ${s.name} +${ret}💰`, 'lg');
   G.slaves.splice(i, 1); recalc(); openParty(); updateHUD();
 };
+
+window.equipSlaveWeapon = (idx, itemId) => {
+  const s = G.slaves[idx]; if (!s || !itemId) return;
+  const invItem = G.inv.find(it => it.id === itemId);
+  if (!invItem) return;
+  // Unequip current weapon first
+  if (s.equippedWeapon) {
+    const old = ITEMS[s.equippedWeapon];
+    if (old) { const ex = G.inv.find(v => v.id === old.id); if (ex) ex.qty = (ex.qty||1)+1; else G.inv.push({...old, qty:1}); }
+  }
+  s.equippedWeapon = itemId;
+  invItem.qty = (invItem.qty || 1) - 1;
+  if (invItem.qty <= 0) G.inv.splice(G.inv.indexOf(invItem), 1);
+  const w = ITEMS[itemId];
+  const tactic = RANGED_WTYPES.includes(w.wtype) ? 'дальний бой' : 'ближний бой';
+  log(`${s.firstName} получил${s.gender==='f'?'а':''} ${w.name} (${tactic})`, 'ls');
+  openParty(); updateHUD();
+};
+
+window.unequipSlaveWeapon = idx => {
+  const s = G.slaves[idx]; if (!s || !s.equippedWeapon) return;
+  const it = ITEMS[s.equippedWeapon];
+  if (it) { const ex = G.inv.find(v => v.id === it.id); if (ex) ex.qty = (ex.qty||1)+1; else G.inv.push({...it, qty:1}); }
+  log(`${s.firstName}: снято оружие ${it ? it.name : ''}`, 'li');
+  s.equippedWeapon = null;
+  openParty(); updateHUD();
+};
+
+window.equipSlaveArmor = (idx, itemId) => {
+  const s = G.slaves[idx]; if (!s || !itemId) return;
+  const invItem = G.inv.find(it => it.id === itemId);
+  if (!invItem) return;
+  // Unequip current armor first
+  if (s.equippedArmor) {
+    const old = ITEMS[s.equippedArmor];
+    if (old) { const ex = G.inv.find(v => v.id === old.id); if (ex) ex.qty = (ex.qty||1)+1; else G.inv.push({...old, qty:1}); }
+  }
+  s.equippedArmor = itemId;
+  invItem.qty = (invItem.qty || 1) - 1;
+  if (invItem.qty <= 0) G.inv.splice(G.inv.indexOf(invItem), 1);
+  const ar = ITEMS[itemId];
+  log(`${s.firstName} получил${s.gender==='f'?'а':''} ${ar.name}`, 'ls');
+  openParty(); updateHUD();
+};
+
+window.unequipSlaveArmor = idx => {
+  const s = G.slaves[idx]; if (!s || !s.equippedArmor) return;
+  const it = ITEMS[s.equippedArmor];
+  if (it) { const ex = G.inv.find(v => v.id === it.id); if (ex) ex.qty = (ex.qty||1)+1; else G.inv.push({...it, qty:1}); }
+  log(`${s.firstName}: снята броня ${it ? it.name : ''}`, 'li');
+  s.equippedArmor = null;
+  openParty(); updateHUD();
+};
+
 window.openParty = openParty;
 
 // ===== PROPERTIES =====
@@ -3806,7 +4137,7 @@ function openProperties() {
   let html = '';
 
   // Available for purchase
-  const availableArea = curArea; // only show properties for current area
+  const availableArea = (curArea === 'world' && curBiome) ? curBiome.id : curArea;
   const available = Object.values(PROPERTY_TYPES).filter(pt => {
     if (pt.area !== availableArea) return false;
     return !G.properties.some(p => p.typeId === pt.id); // can buy only one of each
