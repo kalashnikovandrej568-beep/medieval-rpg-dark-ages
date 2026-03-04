@@ -183,6 +183,7 @@ canvas{display:block}
     <div class="cc-slider-row"><label>Мускулатура</label><input type="range" id="cc-muscle" min="0" max="100" value="40" oninput="ccUpdatePreview()"><span class="sv" id="cc-muscle-v">40</span></div>
     <div class="cc-slider-row"><label>Размер головы</label><input type="range" id="cc-head" min="0" max="100" value="50" oninput="ccUpdatePreview()"><span class="sv" id="cc-head-v">50</span></div>
     <div class="cc-slider-row"><label>Длина ног</label><input type="range" id="cc-legs" min="0" max="100" value="50" oninput="ccUpdatePreview()"><span class="sv" id="cc-legs-v">50</span></div>
+    <div class="cc-slider-row" id="cc-bust-row" style="display:none"><label>Размер груди</label><input type="range" id="cc-bust" min="0" max="100" value="50" oninput="ccUpdatePreview()"><span class="sv" id="cc-bust-v">50</span></div>
    </div>
    <div class="cc-section">
     <h3>🎨 Цвета</h3>
@@ -439,6 +440,7 @@ function generateSlave(traderType) {
   const bodyColor = isFemale
     ? BODY_COLORS_F[Math.floor(rr() * BODY_COLORS_F.length)]
     : BODY_COLORS_M[Math.floor(rr() * BODY_COLORS_M.length)];
+  const bustSize = isFemale ? Math.floor(15 + rr() * 85) : 0; // 15-100 for females
 
   // Gender icon
   const genderIcon = isFemale ? '♀' : '♂';
@@ -475,7 +477,7 @@ function generateSlave(traderType) {
     icon: isFighter ? (isRanged ? (primarySkill.id === 'magic' ? '🔮' : '🏹') : '⚔️')
       : (isHealer ? '💊' : primarySkill.icon),
     roleDesc,
-    hairColor, skinColor, bodyColor,
+    hairColor, skinColor, bodyColor, bustSize,
     desc: `${genderIcon} ${age} лет • ${trait1}, ${trait2}`,
     assignedTo: null, // property uid or null
   };
@@ -846,29 +848,120 @@ function drawRealisticHair(ctx, cx, cy, r, hairColor, isFemale) {
   hg.addColorStop(1, darkenColor(hairColor, 15));
   ctx.fillStyle = hg;
   if (isFemale) {
-    ctx.beginPath(); ctx.arc(cx, cy - r*.12, r*1.08, Math.PI, Math.PI*2); ctx.fill();
+    // Top hair dome
+    ctx.beginPath(); ctx.arc(cx, cy - r*.15, r*1.08, Math.PI, Math.PI*2); ctx.fill();
+    // Side locks (long hair)
     ctx.beginPath();
-    ctx.moveTo(cx - r*1.1, cy - r*.12);
+    ctx.moveTo(cx - r*1.1, cy - r*.15);
     ctx.quadraticCurveTo(cx - r*1.15, cy + r*.8, cx - r*.85, cy + r*1.7);
     ctx.lineTo(cx - r*.65, cy + r*1.7);
-    ctx.quadraticCurveTo(cx - r*.8, cy + r*.5, cx - r*.82, cy - r*.12);
+    ctx.quadraticCurveTo(cx - r*.8, cy + r*.5, cx - r*.82, cy - r*.15);
     ctx.fill();
     ctx.beginPath();
-    ctx.moveTo(cx + r*1.1, cy - r*.12);
+    ctx.moveTo(cx + r*1.1, cy - r*.15);
     ctx.quadraticCurveTo(cx + r*1.15, cy + r*.8, cx + r*.85, cy + r*1.7);
     ctx.lineTo(cx + r*.65, cy + r*1.7);
-    ctx.quadraticCurveTo(cx + r*.8, cy + r*.5, cx + r*.82, cy - r*.12);
+    ctx.quadraticCurveTo(cx + r*.8, cy + r*.5, cx + r*.82, cy - r*.15);
     ctx.fill();
-    ctx.fillRect(cx - r*1.06, cy - r*.18, r*2.12, r*.22);
+    // Bangs - above forehead, not covering eyes
+    ctx.fillRect(cx - r*1.04, cy - r*.55, r*2.08, r*.2);
     // Hair shine
     ctx.fillStyle = 'rgba(255,255,255,.08)';
-    ctx.beginPath(); ctx.ellipse(cx - r*.25, cy - r*.55, r*.35, r*.12, -.15, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(cx - r*.25, cy - r*.6, r*.35, r*.12, -.15, 0, Math.PI*2); ctx.fill();
   } else {
-    ctx.beginPath(); ctx.arc(cx, cy - r*.12, r*1.04, Math.PI*.82, Math.PI*2.18); ctx.fill();
-    ctx.fillRect(cx - r, cy - r*.18, r*2, r*.28);
+    // Male hair cap
+    ctx.beginPath(); ctx.arc(cx, cy - r*.15, r*1.04, Math.PI*.82, Math.PI*2.18); ctx.fill();
+    // Short fringe - stays above eyebrow line
+    ctx.fillRect(cx - r*.95, cy - r*.5, r*1.9, r*.18);
     ctx.fillStyle = 'rgba(255,255,255,.06)';
-    ctx.beginPath(); ctx.ellipse(cx - r*.2, cy - r*.5, r*.3, r*.12, -.2, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(cx - r*.2, cy - r*.55, r*.3, r*.12, -.2, 0, Math.PI*2); ctx.fill();
   }
+}
+
+// ── Draw a slave preview on a given canvas for the shop ──
+function drawSlavePreview(canvas, slave) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const isFemale = slave.gender === 'f';
+  const skinCol = slave.skinColor || '#d0b080';
+  const hairCol = slave.hairColor || '#4a3020';
+  const bodyCol = slave.bodyColor || '#5a6a5a';
+  const bustVal = (slave.bustSize || 0) / 100;
+
+  const cx0 = W / 2;
+  const feetY = H - 8;
+  const r = 10; // base body radius
+  const headR = 6.5;
+  const bodyH2 = 14;
+  const legLen = 8;
+
+  // Shadow
+  const sg = ctx.createRadialGradient(cx0, feetY + 1, 1, cx0, feetY + 1, r);
+  sg.addColorStop(0, 'rgba(0,0,0,.25)');
+  sg.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = sg;
+  ctx.beginPath(); ctx.ellipse(cx0, feetY + 1, r * .8, 3, 0, 0, Math.PI * 2); ctx.fill();
+
+  // Legs
+  ctx.fillStyle = '#3a2a18';
+  ctx.fillRect(cx0 - 3, feetY - legLen, 2.2, legLen);
+  ctx.fillRect(cx0 + .8, feetY - legLen, 2.2, legLen);
+  // Boots
+  ctx.fillStyle = '#2a1a0a';
+  ctx.fillRect(cx0 - 3.5, feetY - 2, 3.2, 2.5);
+  ctx.fillRect(cx0 + .3, feetY - 2, 3.2, 2.5);
+
+  const bodyY = feetY - legLen - bodyH2 * .5;
+  const headY = bodyY - bodyH2 * .5 - headR * .5;
+
+  // Body
+  const bg = ctx.createRadialGradient(cx0 - r*.2, bodyY - 2, 0, cx0, bodyY, r);
+  bg.addColorStop(0, lightenColor(bodyCol, 22));
+  bg.addColorStop(0.6, bodyCol);
+  bg.addColorStop(1, darkenColor(bodyCol, 18));
+  ctx.fillStyle = bg;
+  if (isFemale) {
+    ctx.beginPath();
+    ctx.ellipse(cx0, bodyY - 2, r * .45, bodyH2 * .38, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx0, bodyY + 3, r * .5, bodyH2 * .32, 0, 0, Math.PI * 2); ctx.fill();
+    // Breasts
+    if (bustVal > 0.05) {
+      const bR = r * (.06 + bustVal * .12);
+      const bY = bodyY - 2;
+      ctx.fillStyle = darkenColor(bodyCol, 6);
+      ctx.beginPath(); ctx.ellipse(cx0 - r*.18, bY, bR, bR * .8, -.1, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(cx0 + r*.18, bY, bR, bR * .8, .1, 0, Math.PI * 2); ctx.fill();
+    }
+  } else {
+    ctx.beginPath();
+    ctx.moveTo(cx0 - r*.55, bodyY - bodyH2 * .35);
+    ctx.lineTo(cx0 + r*.55, bodyY - bodyH2 * .35);
+    ctx.lineTo(cx0 + r*.38, bodyY + bodyH2 * .38);
+    ctx.lineTo(cx0 - r*.38, bodyY + bodyH2 * .38);
+    ctx.closePath(); ctx.fill();
+  }
+  // Belt
+  ctx.fillStyle = '#3a2518';
+  ctx.fillRect(cx0 - r*.45, bodyY + bodyH2 * .25, r * .9, 1.5);
+
+  // Arms
+  ctx.fillStyle = skinCol;
+  ctx.fillRect(cx0 - r*.6, bodyY - 3, 2, 7);
+  ctx.beginPath(); ctx.arc(cx0 - r*.6 + 1, bodyY + 4, 1.2, 0, Math.PI * 2); ctx.fill();
+  ctx.fillRect(cx0 + r*.4, bodyY - 3, 2, 7);
+  ctx.beginPath(); ctx.arc(cx0 + r*.4 + 1, bodyY + 4, 1.2, 0, Math.PI * 2); ctx.fill();
+
+  // Neck
+  ctx.fillStyle = skinCol;
+  ctx.fillRect(cx0 - 1.5, headY + headR * .5, 3, 3);
+
+  // Head, hair, face
+  drawRealisticHead(ctx, cx0, headY, headR, skinCol, hairCol, slave.gender || 'm');
+  drawRealisticHair(ctx, cx0, headY, headR, hairCol, isFemale);
+  drawRealisticFace(ctx, cx0, headY, headR, isFemale, '#5a7a50');
 }
 
 function drawTree(t) {
@@ -1033,15 +1126,15 @@ function drawNPC(n) {
   X.fillStyle = bg;
   if (isFemale) {
     X.beginPath();
-    X.ellipse(nx, ny - r*.1, r*.8, r*.55, 0, 0, Math.PI*2); X.fill();
+    X.ellipse(nx, ny - r*.1, r*.6, r*.55, 0, 0, Math.PI*2); X.fill();
     X.beginPath();
-    X.ellipse(nx, ny + r*.25, r*.85, r*.45, 0, 0, Math.PI*2); X.fill();
+    X.ellipse(nx, ny + r*.25, r*.65, r*.45, 0, 0, Math.PI*2); X.fill();
   } else {
     X.beginPath();
-    X.moveTo(nx - r*.9, ny - r*.45);
-    X.bezierCurveTo(nx - r, ny + r*.1, nx - r*.65, ny + r*.5, nx - r*.6, ny + r*.55);
-    X.lineTo(nx + r*.6, ny + r*.55);
-    X.bezierCurveTo(nx + r*.65, ny + r*.5, nx + r, ny + r*.1, nx + r*.9, ny - r*.45);
+    X.moveTo(nx - r*.7, ny - r*.45);
+    X.bezierCurveTo(nx - r*.75, ny + r*.1, nx - r*.5, ny + r*.5, nx - r*.45, ny + r*.55);
+    X.lineTo(nx + r*.45, ny + r*.55);
+    X.bezierCurveTo(nx + r*.5, ny + r*.5, nx + r*.75, ny + r*.1, nx + r*.7, ny - r*.45);
     X.closePath(); X.fill();
   }
   // Collar
@@ -1127,10 +1220,10 @@ function drawEnemy(e) {
     bg.addColorStop(1, darkenColor(e.color1, 25));
     X.fillStyle = bg;
     X.beginPath();
-    X.moveTo(ex - r*.85, ey - r*.45 + bob);
-    X.bezierCurveTo(ex - r*.95, ey + r*.1 + bob, ex - r*.6, ey + r*.4 + bob, ex - r*.55, ey + r*.5 + bob);
-    X.lineTo(ex + r*.55, ey + r*.5 + bob);
-    X.bezierCurveTo(ex + r*.6, ey + r*.4 + bob, ex + r*.95, ey + r*.1 + bob, ex + r*.85, ey - r*.45 + bob);
+    X.moveTo(ex - r*.65, ey - r*.45 + bob);
+    X.bezierCurveTo(ex - r*.72, ey + r*.1 + bob, ex - r*.48, ey + r*.4 + bob, ex - r*.42, ey + r*.5 + bob);
+    X.lineTo(ex + r*.42, ey + r*.5 + bob);
+    X.bezierCurveTo(ex + r*.48, ey + r*.4 + bob, ex + r*.72, ey + r*.1 + bob, ex + r*.65, ey - r*.45 + bob);
     X.closePath(); X.fill();
     // Clothing detail
     X.strokeStyle = 'rgba(0,0,0,.12)'; X.lineWidth = .8;
@@ -1272,8 +1365,8 @@ function drawPlayer() {
   const fLegs = 0.8 + (sh.legs / 100) * 0.4;
   const isFemale = G.gender === 'f';
 
-  const bodyR = G.r * (1 + fF * 0.25);
-  const bodyRx = bodyR * (isFemale ? 0.85 : 1) * fW;
+  const bodyR = G.r * (1 + fF * 0.2);
+  const bodyRx = bodyR * (isFemale ? 0.62 : 0.75) * fW;
   const bodyRy = bodyR * (isFemale ? 1.1 : 0.95 + fF * 0.1) * fH;
   const headR = G.r * .55 * fHead;
   const headY = py - bodyRy * .55 + bob;
@@ -1285,7 +1378,7 @@ function drawPlayer() {
   if (G.invincible > 0 && Math.floor(G.invincible / 4) % 2 === 0) X.globalAlpha = .4;
 
   // Legs with gradient
-  const legW = 3.5 + fF * 2.5 + fM * 1.5;
+  const legW = 2.5 + fF * 1.5 + fM * 1;
   const legH = 9 * fLegs;
   const legGrad = X.createLinearGradient(px, py + 6, px, py + 6 + legH);
   legGrad.addColorStop(0, '#4a3520');
@@ -1328,6 +1421,29 @@ function drawPlayer() {
     X.closePath(); X.fill();
   }
 
+  // Breast rendering for female characters
+  if (isFemale) {
+    const bustVal = (sh.bust !== undefined ? sh.bust : 50) / 100;
+    const bustR = bodyRx * (.12 + bustVal * .22);
+    const bustY = py - bodyRy * .2 + bob;
+    const bustSpacing = bodyRx * .32;
+    const bustGrad = X.createRadialGradient(px - bustSpacing - bustR*.3, bustY - bustR*.3, bustR*.1, px - bustSpacing, bustY, bustR);
+    bustGrad.addColorStop(0, lightenColor(armorColor, 20));
+    bustGrad.addColorStop(0.7, armorColor);
+    bustGrad.addColorStop(1, darkenColor(armorColor, 15));
+    X.fillStyle = bustGrad;
+    X.beginPath(); X.ellipse(px - bustSpacing, bustY, bustR, bustR * .85, -.1, 0, Math.PI * 2); X.fill();
+    const bustGrad2 = X.createRadialGradient(px + bustSpacing - bustR*.3, bustY - bustR*.3, bustR*.1, px + bustSpacing, bustY, bustR);
+    bustGrad2.addColorStop(0, lightenColor(armorColor, 20));
+    bustGrad2.addColorStop(0.7, armorColor);
+    bustGrad2.addColorStop(1, darkenColor(armorColor, 15));
+    X.fillStyle = bustGrad2;
+    X.beginPath(); X.ellipse(px + bustSpacing, bustY, bustR, bustR * .85, .1, 0, Math.PI * 2); X.fill();
+    // Subtle shadow between
+    X.fillStyle = 'rgba(0,0,0,.08)';
+    X.beginPath(); X.ellipse(px, bustY + bustR * .1, bustR * .3, bustR * .6, 0, 0, Math.PI * 2); X.fill();
+  }
+
   // Armor / clothing details
   if (G.armor) {
     // Armor plates highlight
@@ -1364,7 +1480,7 @@ function drawPlayer() {
   X.fillRect(px - 3, beltY2 - .5, 6, 4);
 
   // Arms with gradient and rounded shape
-  const armW = 3.5 + fM * 2.5 + fF * 1;
+  const armW = 2.5 + fM * 1.8 + fF * 0.6;
   const armH = 9 + fH * 3;
   const armAngle = walk ? Math.sin(performance.now() * .012) * .4 : 0;
   const armCol = G.armor ? darkenColor('#6a7a8a', 10) : G.headColor;
@@ -1490,20 +1606,33 @@ function drawFollower(s, i) {
   X.fillStyle = bg;
   if (isFemale) {
     X.beginPath();
-    X.ellipse(fx, fy - r*.1 + bobAnim, r*.7, r*.5, 0, 0, Math.PI*2); X.fill();
+    X.ellipse(fx, fy - r*.1 + bobAnim, r*.5, r*.5, 0, 0, Math.PI*2); X.fill();
     X.beginPath();
-    X.ellipse(fx, fy + r*.2 + bobAnim, r*.75, r*.45, 0, 0, Math.PI*2); X.fill();
+    X.ellipse(fx, fy + r*.2 + bobAnim, r*.55, r*.45, 0, 0, Math.PI*2); X.fill();
   } else {
     X.beginPath();
-    X.moveTo(fx - r*.8, fy - r*.4 + bobAnim);
-    X.lineTo(fx + r*.8, fy - r*.4 + bobAnim);
-    X.lineTo(fx + r*.55, fy + r*.45 + bobAnim);
-    X.lineTo(fx - r*.55, fy + r*.45 + bobAnim);
+    X.moveTo(fx - r*.6, fy - r*.4 + bobAnim);
+    X.lineTo(fx + r*.6, fy - r*.4 + bobAnim);
+    X.lineTo(fx + r*.42, fy + r*.45 + bobAnim);
+    X.lineTo(fx - r*.42, fy + r*.45 + bobAnim);
     X.closePath(); X.fill();
   }
   // Belt
   X.fillStyle = '#3a2518';
   X.fillRect(fx - r*.55, fy + r*.3 + bobAnim, r*1.1, 1.5);
+
+  // Breast rendering for female followers
+  if (isFemale) {
+    const bustVal = (s.bustSize || 50) / 100;
+    const bustR = r * (.08 + bustVal * .14);
+    const bustY2 = fy - r * .05 + bobAnim;
+    const bustSp = r * .22;
+    X.fillStyle = darkenColor(bodyCol, 8);
+    X.beginPath(); X.ellipse(fx - bustSp, bustY2, bustR, bustR * .8, -.1, 0, Math.PI * 2); X.fill();
+    X.beginPath(); X.ellipse(fx + bustSp, bustY2, bustR, bustR * .8, .1, 0, Math.PI * 2); X.fill();
+    X.fillStyle = 'rgba(0,0,0,.06)';
+    X.beginPath(); X.ellipse(fx, bustY2, bustR * .2, bustR * .4, 0, 0, Math.PI * 2); X.fill();
+  }
 
   // Arms
   X.fillStyle = skinCol;
@@ -2189,8 +2318,8 @@ function openSlaveMarket(traderId) {
       const ok = G.gold >= price;
       const genderColor = s.gender === 'f' ? '#f8a' : '#8af';
       html += `<div class="card" style="opacity:${ok ? 1 : .4};padding:10px;${ok ? 'cursor:pointer' : ''}" ${ok ? `onclick="buySlave(${i})"` : ''}>
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-          <span style="font-size:22px">${s.icon}</span>
+        <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px">
+          <canvas id="slave-pv-${i}" width="36" height="64" style="border-radius:4px;background:rgba(0,0,0,.15);flex-shrink:0"></canvas>
           <div style="flex:1">
             <div class="nm" style="font-size:13px">${s.name} <span style="color:${genderColor}">${s.genderIcon}</span></div>
             <div style="color:#888;font-size:11px">${s.roleDesc} • ${s.age} лет</div>
@@ -2226,7 +2355,7 @@ function openSlaveMarket(traderId) {
       const assignedProp = s.assignedTo ? G.properties.find(p => p.uid === s.assignedTo) : null;
       const assignedText = assignedProp ? `📍 ${PROPERTY_TYPES[assignedProp.typeId].name}` : '📍 Бродяга';
       html += `<div class="card" style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
-        <div style="font-size:26px">${s.icon}</div>
+        <canvas id="owned-pv-${i}" width="36" height="64" style="border-radius:4px;background:rgba(0,0,0,.12);flex-shrink:0"></canvas>
         <div style="flex:1">
           <div class="nm">${s.name} <span style="color:${genderColor}">${s.genderIcon}</span></div>
           <div class="ds">${s.roleDesc} • ${s.age} лет • ${s.skill.icon}${s.starStr}</div>
@@ -2237,6 +2366,21 @@ function openSlaveMarket(traderId) {
     });
   }
   content.innerHTML = html;
+
+  // Draw slave preview canvases after DOM update
+  setTimeout(() => {
+    inv.forEach((s, i) => {
+      const cvs = document.getElementById('slave-pv-' + i);
+      if (cvs) drawSlavePreview(cvs, s);
+    });
+    if (G.slaves) {
+      G.slaves.forEach((s, i) => {
+        const cvs = document.getElementById('owned-pv-' + i);
+        if (cvs) drawSlavePreview(cvs, s);
+      });
+    }
+  }, 0);
+
   openOv('ov-slave');
 }
 
@@ -2736,6 +2880,8 @@ function ccSetGender(g) {
     inp.value = g === 'f' ? fNames[Math.floor(Math.random()*fNames.length)] : mNames[Math.floor(Math.random()*mNames.length)];
     inp.dataset.auto = '1';
   }
+  // Show/hide bust slider
+  document.getElementById('cc-bust-row').style.display = g === 'f' ? '' : 'none';
   ccBodyColor = (g === 'f' ? CC_BODIES_F : CC_BODIES_M)[0];
   ccRenderColors();
   ccUpdatePreview();
@@ -2773,9 +2919,10 @@ window.ccPickBody = c => { ccBodyColor = c; ccRenderColors(); ccUpdatePreview();
 
 function ccUpdatePreview() {
   // Update value displays
-  ['height','width','fat','muscle','head','legs'].forEach(k => {
-    const v = document.getElementById('cc-'+k).value;
-    document.getElementById('cc-'+k+'-v').textContent = v;
+  ['height','width','fat','muscle','head','legs','bust'].forEach(k => {
+    const el = document.getElementById('cc-'+k);
+    const vEl = document.getElementById('cc-'+k+'-v');
+    if (el && vEl) vEl.textContent = el.value;
   });
 
   const cv = document.getElementById('cc-preview');
@@ -2795,12 +2942,12 @@ function ccUpdatePreview() {
   const isFemale = ccGender === 'f';
 
   // Derived sizes
-  const bodyW = 22 + sWidth * 16 + sFat * 10;
+  const bodyW = 16 + sWidth * 12 + sFat * 7;
   const bodyH = bodyW * (1 + sFat * 0.3);
   const headR = 14 + sHead * 10;
   const legLen = 20 + sLegs * 20;
   const armLen = 14 + sHeight * 10;
-  const shoulderW = bodyW * (0.7 + sMuscle * 0.4 + sWidth * 0.2);
+  const shoulderW = bodyW * (0.65 + sMuscle * 0.3 + sWidth * 0.15);
 
   const cx0 = W / 2;
   const feetY = H - 38;
@@ -2815,7 +2962,7 @@ function ccUpdatePreview() {
   cx.beginPath(); cx.ellipse(cx0, feetY + 5, bodyW * 0.85, 7, 0, 0, Math.PI * 2); cx.fill();
 
   // Legs with gradient
-  const legW = 5 + sFat * 3 + sMuscle * 2;
+  const legW = 3.5 + sFat * 2 + sMuscle * 1.5;
   const legGrad = cx.createLinearGradient(cx0, feetY - legLen, cx0, feetY);
   legGrad.addColorStop(0, '#4a3520');
   legGrad.addColorStop(0.7, '#3a2a18');
@@ -2875,10 +3022,26 @@ function ccUpdatePreview() {
     cx.bezierCurveTo(cx0 + shoulderW * .9, bodyY + bodyH * .35, cx0 + shoulderW * .55, bodyY + bodyH * .2, cx0 + shoulderW * .45, bodyY + bodyH * .1);
     cx.bezierCurveTo(cx0 + shoulderW * .5, bodyY + bodyH * .05, cx0 + shoulderW * .95, bodyY - bodyH * .2, cx0 + shoulderW * .85, bodyY - bodyH * .45);
     cx.closePath(); cx.fill();
-    // Bust suggestion (subtle shading)
-    cx.fillStyle = 'rgba(0,0,0,.04)';
-    cx.beginPath(); cx.ellipse(cx0 - shoulderW * .25, bodyY - bodyH * .15, shoulderW * .2, bodyH * .15, -.15, 0, Math.PI * 2); cx.fill();
-    cx.beginPath(); cx.ellipse(cx0 + shoulderW * .25, bodyY - bodyH * .15, shoulderW * .2, bodyH * .15, .15, 0, Math.PI * 2); cx.fill();
+    // Breast rendering
+    const sBust = +document.getElementById('cc-bust').value / 100;
+    const bustR = shoulderW * (.1 + sBust * .22);
+    const bustY2 = bodyY - bodyH * .12;
+    const bustSp = shoulderW * .28;
+    const bustGrad = cx.createRadialGradient(cx0 - bustSp - bustR*.3, bustY2 - bustR*.3, bustR*.1, cx0 - bustSp, bustY2, bustR);
+    bustGrad.addColorStop(0, lightenColor(ccBodyColor, 18));
+    bustGrad.addColorStop(0.7, ccBodyColor);
+    bustGrad.addColorStop(1, darkenColor(ccBodyColor, 12));
+    cx.fillStyle = bustGrad;
+    cx.beginPath(); cx.ellipse(cx0 - bustSp, bustY2, bustR, bustR * .85, -.1, 0, Math.PI * 2); cx.fill();
+    const bustGrad2 = cx.createRadialGradient(cx0 + bustSp - bustR*.3, bustY2 - bustR*.3, bustR*.1, cx0 + bustSp, bustY2, bustR);
+    bustGrad2.addColorStop(0, lightenColor(ccBodyColor, 18));
+    bustGrad2.addColorStop(0.7, ccBodyColor);
+    bustGrad2.addColorStop(1, darkenColor(ccBodyColor, 12));
+    cx.fillStyle = bustGrad2;
+    cx.beginPath(); cx.ellipse(cx0 + bustSp, bustY2, bustR, bustR * .85, .1, 0, Math.PI * 2); cx.fill();
+    // Cleavage shadow
+    cx.fillStyle = 'rgba(0,0,0,.07)';
+    cx.beginPath(); cx.ellipse(cx0, bustY2 + bustR * .1, bustR * .2, bustR * .5, 0, 0, Math.PI * 2); cx.fill();
   } else {
     // Masculine broad torso
     cx.beginPath();
@@ -2942,7 +3105,7 @@ function ccUpdatePreview() {
   cx.fillRect(cx0 - 5, bodyY - bodyH * .5 - 2, 10, 5);
 
   // Arms with gradient, joints, and hands
-  const armW = 6 + sMuscle * 5 + sFat * 2;
+  const armW = 4 + sMuscle * 3.5 + sFat * 1.5;
   const armGrad = cx.createLinearGradient(0, 0, 0, armLen);
   armGrad.addColorStop(0, lightenColor(ccSkinColor, 12));
   armGrad.addColorStop(0.5, ccSkinColor);
@@ -3092,6 +3255,7 @@ function confirmCharacter() {
     muscle: +document.getElementById('cc-muscle').value,
     head: +document.getElementById('cc-head').value,
     legs: +document.getElementById('cc-legs').value,
+    bust: +document.getElementById('cc-bust').value,
   };
 
   startGameWithChar(playerName, ccGender, cls, ccSkinColor, ccHairColor, ccBodyColor, bodyShape);
