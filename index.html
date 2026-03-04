@@ -77,6 +77,48 @@ canvas{display:block}
 #death h2{font-size:36px;color:#c02020;text-shadow:0 0 25px rgba(180,30,30,.5)}
 .dstats{color:#aaa;font-size:14px;line-height:2.2;margin:16px 0}
 .dstats b{color:#d4a017}
+
+/* Character Creator */
+#charcreate{position:fixed;top:0;left:0;width:100%;height:100%;z-index:250;display:none;align-items:center;justify-content:center;background:radial-gradient(ellipse,#1a1005 0%,#050300 80%)}
+#charcreate.show{display:flex}
+#cc-panel{background:linear-gradient(135deg,#1e1508,#120c04);border:2px solid #7a5a14;border-radius:12px;padding:24px 30px;max-width:820px;width:94%;max-height:90vh;overflow-y:auto;box-shadow:0 0 60px rgba(100,70,10,.3)}
+#cc-panel::-webkit-scrollbar{width:4px}#cc-panel::-webkit-scrollbar-thumb{background:#554;border-radius:2px}
+#cc-panel h2{color:#d4a017;font-size:22px;text-align:center;margin-bottom:14px;text-shadow:0 0 15px rgba(212,160,23,.3)}
+.cc-row{display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap}
+.cc-left{flex:1;min-width:300px}
+.cc-right{width:220px;display:flex;flex-direction:column;align-items:center}
+.cc-section{margin-bottom:16px}
+.cc-section h3{color:#b08830;font-size:14px;margin-bottom:8px}
+.cc-name-input{width:100%;padding:8px 12px;background:rgba(0,0,0,.5);border:1px solid #5a4a20;border-radius:6px;color:#d4a017;font-size:15px;font-family:'Segoe UI',sans-serif;outline:none}
+.cc-name-input:focus{border-color:#d4a017;box-shadow:0 0 8px rgba(212,160,23,.2)}
+.cc-name-input::placeholder{color:#554}
+.cc-gender{display:flex;gap:8px}
+.cc-gender label{flex:1;padding:10px;background:rgba(0,0,0,.4);border:2px solid #444;border-radius:8px;text-align:center;cursor:pointer;transition:all .2s;font-size:14px}
+.cc-gender label:hover{border-color:#8a6a14}
+.cc-gender input{display:none}
+.cc-gender input:checked+span{color:#d4a017}
+.cc-gender label:has(input:checked){border-color:#d4a017;background:rgba(212,160,23,.1);box-shadow:0 0 12px rgba(212,160,23,.15)}
+.cc-classes{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.cc-cls{padding:10px;background:rgba(0,0,0,.4);border:2px solid #444;border-radius:8px;cursor:pointer;transition:all .2s}
+.cc-cls:hover{border-color:#8a6a14}
+.cc-cls.sel{border-color:#d4a017;background:rgba(212,160,23,.1);box-shadow:0 0 12px rgba(212,160,23,.15)}
+.cc-cls .cls-name{font-weight:bold;color:#d4a017;font-size:13px}
+.cc-cls .cls-desc{color:#888;font-size:10px;margin-top:2px}
+.cc-cls .cls-stats{color:#aaa;font-size:10px;margin-top:3px}
+.cc-slider-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.cc-slider-row label{width:100px;font-size:12px;color:#aaa;text-align:right}
+.cc-slider-row input[type=range]{flex:1;-webkit-appearance:none;appearance:none;height:6px;background:#2a2a30;border-radius:3px;outline:none}
+.cc-slider-row input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;background:#d4a017;border-radius:50%;cursor:pointer;box-shadow:0 0 6px rgba(212,160,23,.4)}
+.cc-slider-row .sv{width:28px;font-size:11px;color:#d4a017;text-align:center}
+.cc-colors{display:flex;gap:5px;flex-wrap:wrap;margin-top:4px}
+.cc-colors .cbox{width:24px;height:24px;border-radius:50%;border:2px solid #444;cursor:pointer;transition:all .15s}
+.cc-colors .cbox:hover{transform:scale(1.15)}
+.cc-colors .cbox.sel{border-color:#d4a017;box-shadow:0 0 8px rgba(212,160,23,.4);transform:scale(1.15)}
+#cc-preview{border:2px solid #5a4a20;border-radius:8px;background:rgba(0,0,0,.5);margin-bottom:10px}
+.cc-preview-name{color:#d4a017;font-size:14px;text-align:center;margin-top:6px}
+.cc-preview-class{color:#888;font-size:11px;text-align:center}
+#cc-go{display:block;width:100%;margin-top:16px;padding:12px;font-size:16px;font-weight:bold;border:2px solid #7a5a14;border-radius:8px;background:linear-gradient(135deg,#2a1a08,#1a1005);color:#d4a017;cursor:pointer;box-shadow:0 0 20px rgba(120,80,10,.2);transition:all .3s}
+#cc-go:hover{box-shadow:0 0 40px rgba(180,120,20,.4);border-color:#d4a017;color:#fff}
 </style>
 </head>
 <body>
@@ -107,12 +149,59 @@ canvas{display:block}
 <div id="start">
  <h1>⚔️ ТЁМНЫЕ ВЕКА</h1>
  <p class="tl">Action RPG • Средневековье • Работорговля</p>
- <button class="go" onclick="startGame()">▶ НАЧАТЬ</button>
+ <button class="go" onclick="openCharCreator()">▶ НАЧАТЬ</button>
  <div class="keys">
   <kbd>WASD</kbd> Плавное движение &nbsp;<kbd>ЛКМ</kbd> Атака &nbsp;<kbd>E</kbd> Взаимодействие<br>
-  <kbd>Shift</kbd> Рывок &nbsp;<kbd>I</kbd> Инвентарь &nbsp;<kbd>C</kbd> Персонаж &nbsp;<kbd>P</kbd> Отряд &nbsp;<kbd>B</kbd> Владения &nbsp;<kbd></kbd>1-3</kbd> Быстр. зелья
+  <kbd>Shift</kbd> Рывок &nbsp;<kbd>I</kbd> Инвентарь &nbsp;<kbd>C</kbd> Персонаж &nbsp;<kbd>P</kbd> Отряд &nbsp;<kbd>B</kbd> Владения &nbsp;<kbd>1-3</kbd> Быстр. зелья
  </div>
 </div>
+
+<div id="charcreate"><div id="cc-panel">
+ <h2>⚔️ Создание персонажа</h2>
+ <div class="cc-row">
+  <div class="cc-left">
+   <div class="cc-section">
+    <h3>📝 Имя</h3>
+    <input type="text" class="cc-name-input" id="cc-name" placeholder="Введите имя героя..." maxlength="24">
+   </div>
+   <div class="cc-section">
+    <h3>⚧ Пол</h3>
+    <div class="cc-gender">
+     <label onclick="ccSetGender('m')"><input type="radio" name="ccg" checked><span>♂ Мужчина</span></label>
+     <label onclick="ccSetGender('f')"><input type="radio" name="ccg"><span>♀ Женщина</span></label>
+    </div>
+   </div>
+   <div class="cc-section">
+    <h3>🎭 Класс</h3>
+    <div class="cc-classes" id="cc-classes"></div>
+   </div>
+   <div class="cc-section">
+    <h3>📏 Телосложение</h3>
+    <div class="cc-slider-row"><label>Рост</label><input type="range" id="cc-height" min="0" max="100" value="50" oninput="ccUpdatePreview()"><span class="sv" id="cc-height-v">50</span></div>
+    <div class="cc-slider-row"><label>Ширина плеч</label><input type="range" id="cc-width" min="0" max="100" value="50" oninput="ccUpdatePreview()"><span class="sv" id="cc-width-v">50</span></div>
+    <div class="cc-slider-row"><label>Полнота</label><input type="range" id="cc-fat" min="0" max="100" value="30" oninput="ccUpdatePreview()"><span class="sv" id="cc-fat-v">30</span></div>
+    <div class="cc-slider-row"><label>Мускулатура</label><input type="range" id="cc-muscle" min="0" max="100" value="40" oninput="ccUpdatePreview()"><span class="sv" id="cc-muscle-v">40</span></div>
+    <div class="cc-slider-row"><label>Размер головы</label><input type="range" id="cc-head" min="0" max="100" value="50" oninput="ccUpdatePreview()"><span class="sv" id="cc-head-v">50</span></div>
+    <div class="cc-slider-row"><label>Длина ног</label><input type="range" id="cc-legs" min="0" max="100" value="50" oninput="ccUpdatePreview()"><span class="sv" id="cc-legs-v">50</span></div>
+   </div>
+   <div class="cc-section">
+    <h3>🎨 Цвета</h3>
+    <div style="font-size:12px;color:#888;margin-bottom:4px">Кожа</div>
+    <div class="cc-colors" id="cc-skin-colors"></div>
+    <div style="font-size:12px;color:#888;margin:6px 0 4px">Волосы</div>
+    <div class="cc-colors" id="cc-hair-colors"></div>
+    <div style="font-size:12px;color:#888;margin:6px 0 4px">Одежда</div>
+    <div class="cc-colors" id="cc-body-colors"></div>
+   </div>
+  </div>
+  <div class="cc-right">
+   <canvas id="cc-preview" width="200" height="320"></canvas>
+   <div class="cc-preview-name" id="cc-pname">Герой</div>
+   <div class="cc-preview-class" id="cc-pclass">Воин</div>
+  </div>
+ </div>
+ <button id="cc-go" onclick="confirmCharacter()">⚔️ В БОЙ!</button>
+</div></div>
 
 <div class="ov" id="death"><div class="pnl">
  <h2>💀 ВЫ ПОГИБЛИ</h2>
@@ -893,60 +982,96 @@ function drawPlayer() {
   const bob = Math.sin(performance.now() * .012) * 2 * walk;
   const legAnim = Math.sin(performance.now() * .015) * 4 * walk;
 
+  // Body shape factors from character creator
+  const sh = G.bodyShape || {height:50,width:50,fat:30,muscle:40,head:50,legs:50};
+  const fH = 0.85 + (sh.height / 100) * 0.35;
+  const fW = 0.9 + (sh.width / 100) * 0.3;
+  const fF = sh.fat / 100;
+  const fM = sh.muscle / 100;
+  const fHead = 0.85 + (sh.head / 100) * 0.35;
+  const fLegs = 0.8 + (sh.legs / 100) * 0.4;
+  const isFemale = G.gender === 'f';
+
   // Shadow
   X.fillStyle = 'rgba(0,0,0,.25)';
-  X.beginPath(); X.ellipse(px, py + G.r + 2, G.r, G.r * .3, 0, 0, Math.PI * 2); X.fill();
+  X.beginPath(); X.ellipse(px, py + G.r + 2, G.r * fW, G.r * .3, 0, 0, Math.PI * 2); X.fill();
 
   if (G.invincible > 0 && Math.floor(G.invincible / 4) % 2 === 0) X.globalAlpha = .4;
 
-  // Legs
+  // Legs — scaled by body shape
+  const legW = 3 + fF * 2 + fM * 1.5;
+  const legH = 8 * fLegs;
   X.fillStyle = '#3a2a18';
-  X.fillRect(px - 5, py + 6 + legAnim, 4, 9);
-  X.fillRect(px + 1, py + 6 - legAnim, 4, 9);
+  X.fillRect(px - legW * 1.2, py + 6 + legAnim, legW, legH);
+  X.fillRect(px + legW * 0.2, py + 6 - legAnim, legW, legH);
   // Boots
   X.fillStyle = '#2a1a0a';
-  X.fillRect(px - 6, py + 13 + legAnim, 6, 3);
-  X.fillRect(px, py + 13 - legAnim, 6, 3);
+  X.fillRect(px - legW * 1.2 - 1, py + 5 + legH + legAnim, legW + 2, 3);
+  X.fillRect(px + legW * 0.2 - 1, py + 5 + legH - legAnim, legW + 2, 3);
 
-  // Body with armor
+  // Body with armor — shaped by character creation
+  const bodyR = G.r * (1 + fF * 0.25);
+  const bodyRx = bodyR * (isFemale ? 0.9 : 1);
+  const bodyRy = bodyR * (isFemale ? 1.05 : 0.95 + fF * 0.1);
   if (G.armor) {
     X.fillStyle = G.armor.id === 'dragon_armor' ? '#4a5a6a' : G.armor.id === 'plate' ? '#6a7a8a' : G.armor.id === 'chain' ? '#7a7a7a' : '#6a5a3a';
-    X.beginPath(); X.arc(px, py + bob, G.r, 0, Math.PI * 2); X.fill();
+    X.beginPath(); X.ellipse(px, py + bob, bodyRx, bodyRy, 0, 0, Math.PI * 2); X.fill();
     X.strokeStyle = 'rgba(200,200,200,.3)'; X.lineWidth = 1.5; X.stroke();
-    // Armor detail
     X.fillStyle = 'rgba(255,255,255,.08)';
-    X.beginPath(); X.arc(px - 3, py - 3 + bob, G.r * .6, 0, Math.PI * 2); X.fill();
+    X.beginPath(); X.arc(px - 3, py - 3 + bob, bodyR * .5, 0, Math.PI * 2); X.fill();
   } else {
     X.fillStyle = G.bodyColor;
-    X.beginPath(); X.arc(px, py + bob, G.r, 0, Math.PI * 2); X.fill();
+    X.beginPath(); X.ellipse(px, py + bob, bodyRx, bodyRy, 0, 0, Math.PI * 2); X.fill();
+    // Muscle definition
+    if (fM > 0.5 && !isFemale) {
+      X.fillStyle = 'rgba(255,255,255,.04)';
+      X.beginPath(); X.ellipse(px - bodyRx * .3, py - bodyRy * .1 + bob, bodyRx * .22, bodyRy * .35, 0, 0, Math.PI * 2); X.fill();
+      X.beginPath(); X.ellipse(px + bodyRx * .3, py - bodyRy * .1 + bob, bodyRx * .22, bodyRy * .35, 0, 0, Math.PI * 2); X.fill();
+    }
+    if (isFemale) {
+      // Subtle feminine shape detail
+      X.fillStyle = 'rgba(0,0,0,.06)';
+      X.beginPath(); X.ellipse(px, py + bodyRy * .2 + bob, bodyRx * .35, bodyRy * .15, 0, 0, Math.PI * 2); X.fill();
+    }
   }
   // Belt
   X.fillStyle = '#4a3020';
-  X.fillRect(px - G.r + 2, py + G.r * .4 + bob, G.r * 2 - 4, 3);
+  X.fillRect(px - bodyRx + 2, py + bodyRy * .35 + bob, bodyRx * 2 - 4, 3);
   X.fillStyle = '#d4a017';
-  X.fillRect(px - 2, py + G.r * .4 + bob, 4, 3);
+  X.fillRect(px - 2, py + bodyRy * .35 + bob, 4, 3);
 
-  // Arms
+  // Arms — scaled
+  const armW = 3 + fM * 2 + fF * 1;
+  const armH = 9 + fH * 3;
   const armAngle = walk ? Math.sin(performance.now() * .012) * .4 : 0;
-  X.fillStyle = G.armor ? '#6a7a8a' : '#d0a878';
+  X.fillStyle = G.armor ? '#6a7a8a' : G.headColor;
   // Left arm
-  X.save(); X.translate(px - G.r + 2, py - 2 + bob); X.rotate(-armAngle);
-  X.fillRect(-2, 0, 4, 10); X.restore();
+  X.save(); X.translate(px - bodyRx + 1, py - 2 + bob); X.rotate(-armAngle);
+  X.fillRect(-armW / 2, 0, armW, armH); X.restore();
   // Right arm
-  X.save(); X.translate(px + G.r - 2, py - 2 + bob); X.rotate(armAngle);
-  X.fillRect(-2, 0, 4, 10); X.restore();
+  X.save(); X.translate(px + bodyRx - 1, py - 2 + bob); X.rotate(armAngle);
+  X.fillRect(-armW / 2, 0, armW, armH); X.restore();
 
-  // Head
+  // Head — scaled
+  const headR = G.r * .55 * fHead;
   X.fillStyle = G.headColor;
-  X.beginPath(); X.arc(px, py - G.r * .65 + bob, G.r * .55, 0, Math.PI * 2); X.fill();
+  X.beginPath(); X.arc(px, py - bodyRy * .6 + bob, headR, 0, Math.PI * 2); X.fill();
   // Hair
   X.fillStyle = G.hairColor;
-  X.beginPath(); X.arc(px, py - G.r * .85 + bob, G.r * .5, Math.PI, Math.PI * 2); X.fill();
-  X.fillRect(px - G.r * .5, py - G.r * .85 + bob, G.r, G.r * .15);
+  if (isFemale) {
+    // Longer hair for female
+    X.beginPath(); X.arc(px, py - bodyRy * .7 + bob, headR * 1.05, Math.PI, Math.PI * 2); X.fill();
+    X.fillRect(px - headR * 1.05, py - bodyRy * .7 + bob, headR * .25, headR * 1.6);
+    X.fillRect(px + headR * .8, py - bodyRy * .7 + bob, headR * .25, headR * 1.6);
+    X.fillRect(px - headR * 1.05, py - bodyRy * .7 + bob, headR * 2.1, headR * .2);
+  } else {
+    X.beginPath(); X.arc(px, py - bodyRy * .75 + bob, headR * .95, Math.PI * .85, Math.PI * 2.15); X.fill();
+    X.fillRect(px - headR, py - bodyRy * .75 + bob, headR * 2, headR * .25);
+  }
   // Eyes
   X.fillStyle = '#333';
-  X.beginPath(); X.arc(px - 3, py - G.r * .72 + bob, 1.5, 0, Math.PI * 2); X.fill();
-  X.beginPath(); X.arc(px + 3, py - G.r * .72 + bob, 1.5, 0, Math.PI * 2); X.fill();
+  X.beginPath(); X.arc(px - headR * .45, py - bodyRy * .65 + bob, 1.5, 0, Math.PI * 2); X.fill();
+  X.beginPath(); X.arc(px + headR * .45, py - bodyRy * .65 + bob, 1.5, 0, Math.PI * 2); X.fill();
 
   // Weapon
   if (G.weapon) {
@@ -989,8 +1114,9 @@ function drawPlayer() {
 
   // Level text
   X.font = 'bold 10px Segoe UI'; X.textAlign = 'center';
-  X.fillStyle = '#000'; X.fillText(`Ур.${G.level}`, px + 1, py - G.r - 15);
-  X.fillStyle = '#d4a017'; X.fillText(`Ур.${G.level}`, px, py - G.r - 16);
+  const nameStr = G.playerName ? `${G.playerName} Ур.${G.level}` : `Ур.${G.level}`;
+  X.fillStyle = '#000'; X.fillText(nameStr, px + 1, py - G.r - 15);
+  X.fillStyle = '#d4a017'; X.fillText(nameStr, px, py - G.r - 16);
 }
 
 function drawFollower(s, i) {
@@ -1850,9 +1976,12 @@ window.openInv = openInv;
 
 // ===== STATS =====
 function openStats() {
+  const gIcon = G.gender === 'f' ? '♀' : '♂';
+  const clsInfo = G.className ? `${G.classIcon || ''} ${G.className}` : '';
   document.getElementById('stats-content').innerHTML = `
     <div style="text-align:center;margin-bottom:14px">
-      <div style="font-size:18px;color:#d4a017;margin-top:4px">Уровень ${G.level}</div>
+      <div style="font-size:18px;color:#d4a017;margin-top:4px">${G.playerName || 'Герой'} ${gIcon}</div>
+      <div style="font-size:13px;color:#b08830">${clsInfo} — Уровень ${G.level}</div>
       <div style="font-size:12px;color:#888">Опыт: ${G.xp}/${G.xpNeed}</div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;margin-bottom:14px">
@@ -2150,8 +2279,277 @@ function gameLoop(ts) {
   }
 }
 
-// ===== START =====
-function startGame() {
+// ===== CHARACTER CLASSES =====
+const CHAR_CLASSES = [
+  {id:'warrior', name:'Воин', icon:'⚔️', desc:'Мастер ближнего боя, крепкий и выносливый',
+   stats:{str:5,agi:3,vit:5,chr:2}, bonusAtk:3, bonusDef:2, bonusHp:30, color:'#6a5a8a',
+   startWeapon:'iron_sword', startArmor:'leather'},
+  {id:'rogue', name:'Разбойник', icon:'🗡️', desc:'Быстрый и ловкий, наносит критические удары',
+   stats:{str:3,agi:6,vit:3,chr:3}, bonusAtk:2, bonusDef:0, bonusHp:0, color:'#5a6a5a',
+   startWeapon:'iron_sword', startArmor:null},
+  {id:'knight', name:'Рыцарь', icon:'🛡️', desc:'Закованный в броню защитник, несокрушимая стена',
+   stats:{str:4,agi:2,vit:6,chr:3}, bonusAtk:1, bonusDef:4, bonusHp:40, color:'#6a7a8a',
+   startWeapon:'rusty_sword', startArmor:'chain'},
+  {id:'merchant', name:'Купец', icon:'💰', desc:'Харизматичный торговец, лучшие цены и доход',
+   stats:{str:2,agi:3,vit:3,chr:7}, bonusAtk:0, bonusDef:0, bonusHp:0, color:'#8a7a5a',
+   startWeapon:'rusty_sword', startArmor:null, bonusGold:80},
+  {id:'hunter', name:'Охотник', icon:'🏹', desc:'Следопыт из дикого леса, быстрый и меткий',
+   stats:{str:4,agi:5,vit:4,chr:2}, bonusAtk:2, bonusDef:1, bonusHp:10, color:'#5a7050',
+   startWeapon:'iron_sword', startArmor:'leather'},
+  {id:'brute', name:'Громила', icon:'💪', desc:'Грубая сила, сокрушающие удары, мало ловкости',
+   stats:{str:7,agi:1,vit:5,chr:2}, bonusAtk:5, bonusDef:1, bonusHp:20, color:'#7a5a4a',
+   startWeapon:'great_axe', startArmor:null},
+];
+
+// ===== CHARACTER CREATOR =====
+let ccGender = 'm', ccClass = 'warrior';
+let ccSkinColor = '#e0b888', ccHairColor = '#4a3020', ccBodyColor = '#5a5a8a';
+const CC_SKINS = ['#f0dcc0','#e8c8a0','#e0b888','#d4a878','#c09060','#b87848','#a06838','#8a5830'];
+const CC_HAIRS = ['#1a1a1a','#2a1a0a','#4a3020','#6a4830','#8a6040','#c4a060','#dab070','#8a2020','#d04020','#f0e8d0'];
+const CC_BODIES_M = ['#5a5a8a','#6a5040','#4a6040','#8a6a30','#3a4a5a','#6a3a3a','#5a6a70','#7a7050','#4a4a60','#8a4a2a'];
+const CC_BODIES_F = ['#8a4060','#6a5080','#4a6a60','#7a6040','#5a4a7a','#8a6a50','#6a3050','#5a7060','#7a508a','#a06050'];
+
+function openCharCreator() {
+  document.getElementById('start').style.display = 'none';
+  document.getElementById('charcreate').classList.add('show');
+  ccGender = 'm'; ccClass = 'warrior';
+  ccSkinColor = '#e0b888'; ccHairColor = '#4a3020'; ccBodyColor = '#5a5a8a';
+  // Random name
+  const mNames = ['Ратибор','Святослав','Владимир','Ярослав','Игорь','Олег','Богдан','Мирон'];
+  const fNames = ['Забава','Ярослава','Милана','Злата','Рада','Василиса','Любава','Снежана'];
+  document.getElementById('cc-name').value = mNames[Math.floor(Math.random()*mNames.length)];
+  ccRenderClasses();
+  ccRenderColors();
+  ccUpdatePreview();
+}
+
+function ccSetGender(g) {
+  ccGender = g;
+  const mNames = ['Ратибор','Святослав','Владимир','Ярослав','Игорь','Олег','Богдан','Мирон'];
+  const fNames = ['Забава','Ярослава','Милана','Злата','Рада','Василиса','Любава','Снежана'];
+  const inp = document.getElementById('cc-name');
+  if (!inp.value || inp.dataset.auto === '1') {
+    inp.value = g === 'f' ? fNames[Math.floor(Math.random()*fNames.length)] : mNames[Math.floor(Math.random()*mNames.length)];
+    inp.dataset.auto = '1';
+  }
+  ccBodyColor = (g === 'f' ? CC_BODIES_F : CC_BODIES_M)[0];
+  ccRenderColors();
+  ccUpdatePreview();
+}
+
+function ccRenderClasses() {
+  const el = document.getElementById('cc-classes');
+  el.innerHTML = CHAR_CLASSES.map(c =>
+    `<div class="cc-cls${ccClass===c.id?' sel':''}" onclick="ccSelectClass('${c.id}')">
+      <div class="cls-name">${c.icon} ${c.name}</div>
+      <div class="cls-desc">${c.desc}</div>
+      <div class="cls-stats">💪${c.stats.str} 🏃${c.stats.agi} ❤️${c.stats.vit} 🗣️${c.stats.chr}</div>
+    </div>`
+  ).join('');
+}
+
+function ccSelectClass(id) {
+  ccClass = id;
+  ccRenderClasses();
+  ccUpdatePreview();
+}
+
+function ccRenderColors() {
+  const mkBoxes = (arr, sel, cb) => arr.map(c =>
+    `<div class="cbox${c===sel?' sel':''}" style="background:${c}" onclick="${cb}('${c}')"></div>`
+  ).join('');
+  document.getElementById('cc-skin-colors').innerHTML = mkBoxes(CC_SKINS, ccSkinColor, 'ccPickSkin');
+  document.getElementById('cc-hair-colors').innerHTML = mkBoxes(CC_HAIRS, ccHairColor, 'ccPickHair');
+  const bodies = ccGender === 'f' ? CC_BODIES_F : CC_BODIES_M;
+  document.getElementById('cc-body-colors').innerHTML = mkBoxes(bodies, ccBodyColor, 'ccPickBody');
+}
+window.ccPickSkin = c => { ccSkinColor = c; ccRenderColors(); ccUpdatePreview(); };
+window.ccPickHair = c => { ccHairColor = c; ccRenderColors(); ccUpdatePreview(); };
+window.ccPickBody = c => { ccBodyColor = c; ccRenderColors(); ccUpdatePreview(); };
+
+function ccUpdatePreview() {
+  // Update value displays
+  ['height','width','fat','muscle','head','legs'].forEach(k => {
+    const v = document.getElementById('cc-'+k).value;
+    document.getElementById('cc-'+k+'-v').textContent = v;
+  });
+
+  const cv = document.getElementById('cc-preview');
+  const cx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  cx.clearRect(0, 0, W, H);
+
+  // Read sliders
+  const sHeight = +document.getElementById('cc-height').value / 100; // 0-1
+  const sWidth = +document.getElementById('cc-width').value / 100;
+  const sFat = +document.getElementById('cc-fat').value / 100;
+  const sMuscle = +document.getElementById('cc-muscle').value / 100;
+  const sHead = +document.getElementById('cc-head').value / 100;
+  const sLegs = +document.getElementById('cc-legs').value / 100;
+
+  const cls = CHAR_CLASSES.find(c => c.id === ccClass);
+  const isFemale = ccGender === 'f';
+
+  // Derived sizes
+  const totalH = 90 + sHeight * 60; // 90-150
+  const bodyW = 22 + sWidth * 16 + sFat * 10; // body radius
+  const bodyH = bodyW * (1 + sFat * 0.3);
+  const headR = 14 + sHead * 10;
+  const legLen = 20 + sLegs * 20;
+  const armLen = 12 + sHeight * 8;
+  const shoulderW = bodyW * (0.7 + sMuscle * 0.4 + sWidth * 0.2);
+
+  const cx0 = W / 2;
+  const feetY = H - 40;
+  const bodyY = feetY - legLen - bodyH * 0.5;
+  const headY = bodyY - bodyH * 0.5 - headR * 0.6;
+
+  // Ground shadow
+  cx.fillStyle = 'rgba(0,0,0,.3)';
+  cx.beginPath(); cx.ellipse(cx0, feetY + 4, bodyW * 0.8, 6, 0, 0, Math.PI * 2); cx.fill();
+
+  // Legs
+  const legW = 5 + sFat * 3 + sMuscle * 2;
+  cx.fillStyle = '#3a2a18';
+  cx.fillRect(cx0 - legW * 1.5, feetY - legLen, legW, legLen);
+  cx.fillRect(cx0 + legW * 0.5, feetY - legLen, legW, legLen);
+  // Boots
+  cx.fillStyle = '#2a1a0a';
+  cx.fillRect(cx0 - legW * 1.5 - 2, feetY - 4, legW + 4, 6);
+  cx.fillRect(cx0 + legW * 0.5 - 2, feetY - 4, legW + 4, 6);
+
+  // Body
+  cx.fillStyle = ccBodyColor;
+  if (isFemale) {
+    // Female body shape — hourglass
+    cx.beginPath();
+    cx.ellipse(cx0, bodyY - bodyH * 0.15, shoulderW * 0.85, bodyH * 0.45, 0, 0, Math.PI * 2);
+    cx.fill();
+    cx.beginPath();
+    cx.ellipse(cx0, bodyY + bodyH * 0.3, shoulderW * 0.9, bodyH * 0.4, 0, 0, Math.PI * 2);
+    cx.fill();
+    // Waist
+    cx.fillRect(cx0 - shoulderW * 0.5, bodyY - bodyH * 0.1, shoulderW, bodyH * 0.35);
+  } else {
+    // Male body — broader shoulders
+    cx.beginPath();
+    cx.moveTo(cx0 - shoulderW, bodyY - bodyH * 0.45);
+    cx.lineTo(cx0 + shoulderW, bodyY - bodyH * 0.45);
+    cx.lineTo(cx0 + shoulderW * 0.75, bodyY + bodyH * 0.5);
+    cx.lineTo(cx0 - shoulderW * 0.75, bodyY + bodyH * 0.5);
+    cx.closePath(); cx.fill();
+    // Muscle definition
+    if (sMuscle > 0.4) {
+      cx.fillStyle = 'rgba(255,255,255,.05)';
+      cx.beginPath(); cx.ellipse(cx0 - shoulderW * 0.3, bodyY - bodyH * 0.1, shoulderW * 0.25, bodyH * 0.3, 0, 0, Math.PI * 2); cx.fill();
+      cx.beginPath(); cx.ellipse(cx0 + shoulderW * 0.3, bodyY - bodyH * 0.1, shoulderW * 0.25, bodyH * 0.3, 0, 0, Math.PI * 2); cx.fill();
+    }
+  }
+
+  // Belt
+  cx.fillStyle = '#4a3020';
+  const beltY = bodyY + bodyH * 0.3;
+  cx.fillRect(cx0 - shoulderW * 0.8, beltY, shoulderW * 1.6, 4);
+  cx.fillStyle = '#d4a017';
+  cx.fillRect(cx0 - 3, beltY, 6, 4);
+
+  // Arms
+  cx.fillStyle = ccSkinColor;
+  const armW = 5 + sMuscle * 4 + sFat * 2;
+  // Left arm
+  cx.save(); cx.translate(cx0 - shoulderW + 2, bodyY - bodyH * 0.3);
+  cx.fillRect(-armW / 2, 0, armW, armLen);
+  // Hand
+  cx.beginPath(); cx.arc(0, armLen, armW * 0.5, 0, Math.PI * 2); cx.fill();
+  cx.restore();
+  // Right arm
+  cx.save(); cx.translate(cx0 + shoulderW - 2, bodyY - bodyH * 0.3);
+  cx.fillRect(-armW / 2, 0, armW, armLen);
+  cx.beginPath(); cx.arc(0, armLen, armW * 0.5, 0, Math.PI * 2); cx.fill();
+  cx.restore();
+
+  // Head
+  cx.fillStyle = ccSkinColor;
+  cx.beginPath(); cx.arc(cx0, headY, headR, 0, Math.PI * 2); cx.fill();
+
+  // Hair
+  cx.fillStyle = ccHairColor;
+  if (isFemale) {
+    // Long hair
+    cx.beginPath(); cx.arc(cx0, headY - headR * 0.15, headR * 1.05, Math.PI, Math.PI * 2); cx.fill();
+    cx.fillRect(cx0 - headR * 1.05, headY - headR * 0.15, headR * 0.3, headR * 1.8);
+    cx.fillRect(cx0 + headR * 0.75, headY - headR * 0.15, headR * 0.3, headR * 1.8);
+    cx.fillRect(cx0 - headR * 1.05, headY - headR * 0.15, headR * 2.1, headR * 0.25);
+  } else {
+    // Short hair
+    cx.beginPath(); cx.arc(cx0, headY - headR * 0.15, headR * 1.02, Math.PI * 0.85, Math.PI * 2.15); cx.fill();
+    cx.fillRect(cx0 - headR, headY - headR * 0.2, headR * 2, headR * 0.3);
+  }
+
+  // Eyes
+  cx.fillStyle = '#fff';
+  cx.beginPath(); cx.ellipse(cx0 - headR * 0.3, headY - headR * 0.1, 3.5, 2.5, 0, 0, Math.PI * 2); cx.fill();
+  cx.beginPath(); cx.ellipse(cx0 + headR * 0.3, headY - headR * 0.1, 3.5, 2.5, 0, 0, Math.PI * 2); cx.fill();
+  cx.fillStyle = '#2a1a0a';
+  cx.beginPath(); cx.arc(cx0 - headR * 0.3, headY - headR * 0.08, 2, 0, Math.PI * 2); cx.fill();
+  cx.beginPath(); cx.arc(cx0 + headR * 0.3, headY - headR * 0.08, 2, 0, Math.PI * 2); cx.fill();
+
+  // Mouth
+  cx.strokeStyle = '#8a6050';
+  cx.lineWidth = 1.5;
+  cx.beginPath(); cx.arc(cx0, headY + headR * 0.35, headR * 0.2, 0.1, Math.PI - 0.1); cx.stroke();
+
+  // Class weapon preview
+  if (cls) {
+    cx.strokeStyle = '#aaa'; cx.lineWidth = 3; cx.lineCap = 'round';
+    const wx = cx0 + shoulderW + 6;
+    const wy1 = bodyY - bodyH * 0.2;
+    const wy2 = wy1 - 25;
+    cx.beginPath(); cx.moveTo(wx, wy1); cx.lineTo(wx, wy2); cx.stroke();
+    cx.fillStyle = '#5a3a1a';
+    cx.fillRect(wx - 3, wy1 - 2, 6, 10);
+    // Guard
+    cx.fillStyle = '#888';
+    cx.fillRect(wx - 6, wy2 + 2, 12, 3);
+  }
+
+  // Class icon
+  if (cls) {
+    cx.font = '24px Segoe UI Emoji';
+    cx.textAlign = 'center';
+    cx.fillText(cls.icon, cx0, H - 14);
+  }
+
+  // Update name/class labels
+  const name = document.getElementById('cc-name').value || 'Герой';
+  document.getElementById('cc-pname').textContent = name;
+  document.getElementById('cc-pclass').textContent = cls ? `${cls.icon} ${cls.name}` : '';
+}
+
+document.getElementById('cc-name').addEventListener('input', function() {
+  this.dataset.auto = '0';
+  ccUpdatePreview();
+});
+
+function confirmCharacter() {
+  document.getElementById('charcreate').classList.remove('show');
+  const cls = CHAR_CLASSES.find(c => c.id === ccClass) || CHAR_CLASSES[0];
+  const playerName = document.getElementById('cc-name').value.trim() || (ccGender === 'f' ? 'Героиня' : 'Герой');
+
+  // Read slider values for body shape
+  const bodyShape = {
+    height: +document.getElementById('cc-height').value,
+    width: +document.getElementById('cc-width').value,
+    fat: +document.getElementById('cc-fat').value,
+    muscle: +document.getElementById('cc-muscle').value,
+    head: +document.getElementById('cc-head').value,
+    legs: +document.getElementById('cc-legs').value,
+  };
+
+  startGameWithChar(playerName, ccGender, cls, ccSkinColor, ccHairColor, ccBodyColor, bodyShape);
+}
+
+function startGameWithChar(name, gender, cls, skin, hair, body, shape) {
   closeAllOv();
   document.getElementById('start').style.display = 'none';
   document.getElementById('death').classList.remove('show');
@@ -2160,12 +2558,59 @@ function startGame() {
   document.getElementById('log').style.display = 'block';
   document.getElementById('minimap').style.display = 'block';
   initGame();
+
+  // Apply character creation choices
+  G.playerName = name;
+  G.gender = gender;
+  G.classId = cls.id;
+  G.className = cls.name;
+  G.classIcon = cls.icon;
+  G.headColor = skin;
+  G.hairColor = hair;
+  G.bodyColor = body;
+  G.bodyShape = shape;
+
+  // Apply class stats
+  G.str = cls.stats.str;
+  G.agi = cls.stats.agi;
+  G.vit = cls.stats.vit;
+  G.chr = cls.stats.chr;
+  G.baseAtk = 5 + (cls.bonusAtk || 0);
+  G.baseDef = 2 + (cls.bonusDef || 0);
+  G.gold = 60 + (cls.bonusGold || 0);
+  G.totalGold = G.gold;
+
+  // Apply class starting equipment
+  G.inv = [{...ITEMS.bread, qty:5}];
+  if (cls.startWeapon && ITEMS[cls.startWeapon]) {
+    G.inv.unshift({...ITEMS[cls.startWeapon], qty:1});
+    G.weapon = G.inv[0];
+  }
+  if (cls.startArmor && ITEMS[cls.startArmor]) {
+    const arm = {...ITEMS[cls.startArmor], qty:1};
+    G.inv.push(arm);
+    G.armor = arm;
+  }
+
+  // Apply body shape to radius
+  const heightFactor = 0.85 + (shape.height / 100) * 0.35; // 0.85-1.2
+  const widthFactor = 0.9 + (shape.width / 100) * 0.3; // 0.9-1.2
+  G.r = Math.round(14 * widthFactor);
+  G.speed = 3.5 + G.agi * 0.05 - (shape.fat / 100) * 0.3 + (shape.height / 100) * 0.15;
+
+  recalc();
+  // Extra HP from class
+  if (cls.bonusHp) { G.maxHp += cls.bonusHp; }
+  G.hp = G.maxHp;
+  G.stamina = G.maxStam;
+
   G.running = true;
   gameStarted = true;
   loadArea('village');
   cam.x = G.x - C.width / 2;
   cam.y = G.y - C.height / 2;
-  log('🏰 Добро пожаловать в Тёмные Века!', 'li');
+  log(`🏰 Добро пожаловать, ${name}!`, 'li');
+  log(`Класс: ${cls.icon} ${cls.name} | ${gender === 'f' ? '♀' : '♂'}`, 'li');
   log('WASD — движение, ЛКМ — атака по направлению мыши', 'li');
   log('[E] — разговор с NPC, [Shift] — рывок', 'li');
   log('[B] — владения, [P] — отряд и рабы', 'li');
@@ -2173,7 +2618,16 @@ function startGame() {
   lastTime = performance.now();
 }
 
+// Legacy startGame (from death screen)
+function startGame() {
+  openCharCreator();
+}
+
 window.startGame = startGame;
+window.openCharCreator = openCharCreator;
+window.ccSetGender = ccSetGender;
+window.ccSelectClass = ccSelectClass;
+window.confirmCharacter = confirmCharacter;
 window.closeOv = closeOv;
 window.closeAllOv = closeAllOv;
 window.shopTab = 'buy';
