@@ -101,6 +101,7 @@ canvas{display:block}
  <div class="bb" onclick="openInv()">🎒 Инвентарь [I]</div>
  <div class="bb" onclick="openStats()">📊 Персонаж [C]</div>
  <div class="bb" onclick="openParty()">👥 Отряд [P]</div>
+ <div class="bb" onclick="openProperties()">🏠 Владения [B]</div>
 </div>
 
 <div id="start">
@@ -109,7 +110,7 @@ canvas{display:block}
  <button class="go" onclick="startGame()">▶ НАЧАТЬ</button>
  <div class="keys">
   <kbd>WASD</kbd> Плавное движение &nbsp;<kbd>ЛКМ</kbd> Атака &nbsp;<kbd>E</kbd> Взаимодействие<br>
-  <kbd>Shift</kbd> Рывок &nbsp;<kbd>I</kbd> Инвентарь &nbsp;<kbd>C</kbd> Персонаж &nbsp;<kbd>P</kbd> Отряд &nbsp;<kbd>1-3</kbd> Быстр. зелья
+  <kbd>Shift</kbd> Рывок &nbsp;<kbd>I</kbd> Инвентарь &nbsp;<kbd>C</kbd> Персонаж &nbsp;<kbd>P</kbd> Отряд &nbsp;<kbd>B</kbd> Владения &nbsp;<kbd></kbd>1-3</kbd> Быстр. зелья
  </div>
 </div>
 
@@ -151,6 +152,12 @@ canvas{display:block}
 <div class="ov" id="ov-party"><div class="pnl"><button class="xbtn" onclick="closeOv('ov-party')">✕</button>
  <h2>👥 Отряд и рабы</h2>
  <div id="party-content"></div>
+</div></div>
+
+<div class="ov" id="ov-prop"><div class="pnl" style="max-width:700px"><button class="xbtn" onclick="closeOv('ov-prop')">✕</button>
+ <h2>🏠 Владения</h2>
+ <div style="color:#d4a017;margin-bottom:8px" id="prop-gold">💰 0</div>
+ <div id="prop-content"></div>
 </div></div>
 
 <script>
@@ -199,17 +206,235 @@ const ENEMIES = {
   dragon:   {name:'Виверна',        hp:350,atk:30,def:14,xp:150, gold:120,speed:1.6, color1:'#904020',color2:'#b06040', r:26, agro:280},
 };
 
-// ===== SLAVE TYPES =====
-const SLAVE_TYPES = [
-  {name:'Крестьянин', icon:'👨‍🌾', cost:30,  income:4,  upkeep:1, desc:'Работает на полях, +4💰/день'},
-  {name:'Рудокоп',    icon:'⛏️',  cost:50,  income:7,  upkeep:2, desc:'Добывает руду, +7💰/день'},
-  {name:'Кузнец',     icon:'🔨',  cost:80,  income:12, upkeep:3, desc:'Куёт оружие, +12💰/день'},
-  {name:'Травник',    icon:'🌿',  cost:60,  income:0,  upkeep:2, desc:'Лечит вас на 15 HP/день', healer:true, healAmt:15},
-  {name:'Носильщик',  icon:'💪',  cost:40,  income:2,  upkeep:1, desc:'Носит добычу, +2💰/день'},
-  {name:'Боец',       icon:'⚔️',  cost:120, income:0,  upkeep:5, desc:'Бьётся рядом с вами', fighter:true, atk:10, def:5, hp:70},
-  {name:'Лучник',     icon:'🏹',  cost:100, income:0,  upkeep:4, desc:'Стреляет по врагам', fighter:true, atk:14, def:2, hp:45, ranged:true},
-  {name:'Маг',        icon:'🔮',  cost:200, income:0,  upkeep:8, desc:'Магическая атака', fighter:true, atk:20, def:1, hp:35, ranged:true},
+// ===== SLAVE GENERATION SYSTEM =====
+const MALE_NAMES = ['Иван','Пётр','Алексей','Дмитрий','Николай','Фёдор','Степан','Василий','Григорий','Андрей',
+  'Сергей','Михаил','Борис','Тимофей','Егор','Владимир','Илья','Артём','Макар','Игнат','Ефим','Савелий',
+  'Прохор','Ермак','Кузьма','Лука','Мирон','Тарас','Захар','Яков','Данила','Матвей','Кирилл','Филипп',
+  'Семён','Остап','Герасим','Архип','Назар','Клим','Антон','Максим','Ратибор','Олег','Богдан'];
+const FEMALE_NAMES = ['Анна','Мария','Елена','Ольга','Татьяна','Наталья','Ирина','Светлана','Любовь','Надежда',
+  'Вера','Дарья','Катерина','Василиса','Агафья','Прасковья','Аксинья','Матрёна','Ульяна','Зинаида',
+  'Лукерья','Глафира','Пелагея','Марфа','Евдокия','Варвара','Милана','Забава','Ярослава','Рада',
+  'Злата','Снежана','Влада','Алёна','Тамара','Нина','Полина','Софья','Клара','Роза'];
+const SURNAMES_M = ['Кузнецов','Петров','Иванов','Смирнов','Попов','Соколов','Лебедев','Козлов','Новиков',
+  'Морозов','Волков','Орлов','Медведев','Зайцев','Белов','Сорокин','Громов','Быков','Рыбаков','Ковалёв',
+  'Жуков','Краснов','Сизый','Безухий','Рябой','Кривой','Хромой','Бесов','Железный','Тёмный'];
+const SURNAMES_F = ['Кузнецова','Петрова','Иванова','Смирнова','Попова','Соколова','Лебедева','Козлова','Новикова',
+  'Морозова','Волкова','Орлова','Медведева','Зайцева','Белова','Сорокина','Громова','Быкова','Рыбакова','Ковалёва',
+  'Жукова','Краснова','Сизая','Безухая','Рябая','Кривая','Хромая','Бесова','Железная','Тёмная'];
+
+const TRAITS_M = ['Трудолюбивый','Ленивый','Хитрый','Добрый','Жестокий','Молчаливый','Весёлый','Угрюмый',
+  'Набожный','Жадный','Верный','Мстительный','Храбрый','Трусливый','Гордый','Скромный','Упрямый',
+  'Любопытный','Честный','Подлый','Сильный','Слабый','Мудрый','Глупый','Вспыльчивый','Спокойный'];
+const TRAITS_F = ['Трудолюбивая','Ленивая','Хитрая','Добрая','Жестокая','Молчаливая','Весёлая','Угрюмая',
+  'Набожная','Жадная','Верная','Мстительная','Храбрая','Трусливая','Гордая','Скромная','Упрямая',
+  'Любопытная','Честная','Подлая','Сильная','Слабая','Мудрая','Глупая','Вспыльчивая','Спокойная'];
+
+const BACKSTORIES_M = [
+  'Бывший солдат, попавший в рабство за дезертирство',
+  'Крестьянин, проданный за долги семьи',
+  'Бродяга, пойманный на воровстве',
+  'Военнопленный из северных земель',
+  'Разорившийся купец, ставший рабом',
+  'Сирота, выросший в неволе',
+  'Монах, изгнанный из монастыря',
+  'Охотник, попавший в ловушку работорговцев',
+  'Каторжник, отбывающий наказание',
+  'Мятежник, схваченный королевской стражей',
+  'Шахтёр, продавший себя ради семьи',
+  'Кузнец, потерявший всё в пожаре',
 ];
+const BACKSTORIES_F = [
+  'Крестьянка, проданная обнищавшей семьёй',
+  'Дочь разбойника, попавшая в плен',
+  'Знахарка, обвинённая в колдовстве',
+  'Служанка, бежавшая от жестокого хозяина',
+  'Сирота, выросшая на улицах города',
+  'Ткачиха, попавшая в долговое рабство',
+  'Дочь купца, разорённого войной',
+  'Травница из далёких земель',
+  'Воительница, плённая после битвы',
+  'Беженка из сожжённой деревни',
+  'Бывшая аристократка, лишённая титула',
+  'Целительница, изгнанная из города',
+];
+
+const SKILL_TYPES = [
+  {id:'farming', name:'Земледелие', icon:'🌾', incMult:1.0, bestProp:'farm'},
+  {id:'mining', name:'Горное дело', icon:'⛏️', incMult:1.2, bestProp:'mine'},
+  {id:'smithing', name:'Кузнечное дело', icon:'🔨', incMult:1.5, bestProp:'forge'},
+  {id:'cooking', name:'Готовка', icon:'🍳', incMult:0.8, bestProp:'tavern_prop'},
+  {id:'healing', name:'Лечение', icon:'💊', incMult:0.6, bestProp:null},
+  {id:'combat', name:'Бой', icon:'⚔️', incMult:0.0, bestProp:null},
+  {id:'archery', name:'Стрельба', icon:'🏹', incMult:0.0, bestProp:null},
+  {id:'magic', name:'Магия', icon:'🔮', incMult:0.0, bestProp:null},
+  {id:'fishing', name:'Рыбалка', icon:'🎣', incMult:0.9, bestProp:'farm'},
+  {id:'woodwork', name:'Плотничество', icon:'🪓', incMult:1.1, bestProp:'lumber'},
+  {id:'trade', name:'Торговля', icon:'💰', incMult:1.3, bestProp:'market'},
+  {id:'building', name:'Строительство', icon:'🧱', incMult:1.0, bestProp:null},
+];
+
+const HAIR_COLORS = ['#2a1a0a','#4a3020','#6a4830','#8a6040','#1a1a1a','#3a2010','#c4a060','#8a2020','#dab070'];
+const SKIN_COLORS = ['#e8c8a0','#d4a878','#c09060','#f0d8b8','#b87848','#e0b888','#d0a070','#f0dcc0'];
+const BODY_COLORS_M = ['#5a5a8a','#6a5040','#4a6040','#8a6a30','#3a4a5a','#6a3a3a','#5a6a70','#7a7050'];
+const BODY_COLORS_F = ['#8a4060','#6a5080','#4a6a60','#7a6040','#5a4a7a','#8a6a50','#6a3050','#5a7060'];
+
+let slaveIdCounter = 0;
+
+function generateSlave(traderType) {
+  const isFemale = rr() < 0.45;
+  const names = isFemale ? FEMALE_NAMES : MALE_NAMES;
+  const surnames = isFemale ? SURNAMES_F : SURNAMES_M;
+  const traits = isFemale ? TRAITS_F : TRAITS_M;
+  const backstories = isFemale ? BACKSTORIES_F : BACKSTORIES_M;
+
+  const firstName = names[Math.floor(rr() * names.length)];
+  const lastName = surnames[Math.floor(rr() * surnames.length)];
+  const fullName = `${firstName} ${lastName}`;
+
+  const age = 16 + Math.floor(rr() * 35);
+  const trait1 = traits[Math.floor(rr() * traits.length)];
+  let trait2 = traits[Math.floor(rr() * traits.length)];
+  while (trait2 === trait1) trait2 = traits[Math.floor(rr() * traits.length)];
+  const backstory = backstories[Math.floor(rr() * backstories.length)];
+
+  // Stats based on age and randomness
+  const baseStr = 2 + Math.floor(rr() * 8) + (age > 20 && age < 35 ? 2 : 0);
+  const baseAgi = 2 + Math.floor(rr() * 7) + (age < 25 ? 2 : 0);
+  const baseVit = 2 + Math.floor(rr() * 8) + (age > 18 ? 1 : 0);
+  const baseChr = 1 + Math.floor(rr() * 6);
+
+  // Trait modifiers
+  const traitBonus = (t) => {
+    if (t.includes('Трудолюб')) return {inc: 2, str: 1};
+    if (t.includes('Ленив')) return {inc: -2, upkeep: 1};
+    if (t.includes('Хитр')) return {chr: 2, inc: 1};
+    if (t.includes('Храбр') || t.includes('Сильн')) return {str: 2, atk: 2};
+    if (t.includes('Мудр')) return {inc: 1, chr: 1};
+    if (t.includes('Жадн')) return {inc: 1, upkeep: -1};
+    if (t.includes('Верн')) return {def: 1};
+    return {};
+  };
+  const b1 = traitBonus(trait1), b2 = traitBonus(trait2);
+
+  // Pick primary skill
+  let availableSkills = [...SKILL_TYPES];
+  if (traderType === 'village') availableSkills = availableSkills.filter(s => !['magic'].includes(s.id));
+  const primarySkill = availableSkills[Math.floor(rr() * availableSkills.length)];
+  const skillLevel = 1 + Math.floor(rr() * 5); // 1-5 stars
+
+  // Determine role based on skill
+  const isFighter = ['combat','archery','magic'].includes(primarySkill.id);
+  const isHealer = primarySkill.id === 'healing';
+  const isRanged = ['archery','magic'].includes(primarySkill.id);
+
+  // Calculate cost, income, upkeep based on stats and skills
+  const statTotal = baseStr + baseAgi + baseVit + baseChr;
+  let baseCost = 25 + statTotal * 3 + skillLevel * 12 + (isFighter ? 40 : 0) + (isHealer ? 25 : 0);
+  if (age < 20) baseCost = Math.floor(baseCost * 0.7);
+  if (age > 40) baseCost = Math.floor(baseCost * 0.8);
+  baseCost += Math.floor(rr() * 20) - 10;
+
+  let income = isFighter ? 0 : Math.floor(2 + skillLevel * primarySkill.incMult * 2 + (b1.inc||0) + (b2.inc||0));
+  if (isHealer) income = 0;
+  const upkeep = Math.max(1, Math.floor(1 + statTotal * 0.1 + (isFighter ? 2 : 0) + (b1.upkeep||0) + (b2.upkeep||0)));
+
+  // Fighter stats
+  const atkStat = isFighter ? (6 + baseStr + skillLevel * 2 + (b1.atk||0) + (b2.atk||0)) : 0;
+  const defStat = isFighter ? (2 + Math.floor(baseVit * 0.5) + (b1.def||0) + (b2.def||0)) : 0;
+  const hpStat = isFighter ? (30 + baseVit * 5 + baseStr * 3) : 0;
+  const healAmt = isHealer ? (10 + skillLevel * 5 + baseChr * 2) : 0;
+
+  // Appearance
+  const hairColor = HAIR_COLORS[Math.floor(rr() * HAIR_COLORS.length)];
+  const skinColor = SKIN_COLORS[Math.floor(rr() * SKIN_COLORS.length)];
+  const bodyColor = isFemale
+    ? BODY_COLORS_F[Math.floor(rr() * BODY_COLORS_F.length)]
+    : BODY_COLORS_M[Math.floor(rr() * BODY_COLORS_M.length)];
+
+  // Gender icon
+  const genderIcon = isFemale ? '♀' : '♂';
+
+  // Build description
+  const roleDesc = isFighter
+    ? (isRanged ? 'Боец дальнего боя' : 'Боец ближнего боя')
+    : (isHealer ? 'Целитель' : `Работник (${primarySkill.name})`);
+
+  const starStr = '★'.repeat(skillLevel) + '☆'.repeat(5 - skillLevel);
+
+  return {
+    uid: ++slaveIdCounter,
+    name: fullName,
+    firstName, lastName,
+    gender: isFemale ? 'f' : 'm',
+    genderIcon,
+    age, trait1, trait2, backstory,
+    str: baseStr + (b1.str||0) + (b2.str||0),
+    agi: baseAgi,
+    vit: baseVit,
+    chr: baseChr + (b1.chr||0) + (b2.chr||0),
+    skill: primarySkill,
+    skillLevel, starStr,
+    isFighter, isHealer, isRanged,
+    fighter: isFighter,
+    ranged: isRanged,
+    healer: isHealer,
+    healAmt,
+    atk: atkStat, def: defStat, hp: hpStat,
+    cost: Math.max(15, baseCost),
+    income: Math.max(0, income),
+    upkeep: Math.max(1, upkeep),
+    icon: isFighter ? (isRanged ? (primarySkill.id === 'magic' ? '🔮' : '🏹') : '⚔️')
+      : (isHealer ? '💊' : primarySkill.icon),
+    roleDesc,
+    hairColor, skinColor, bodyColor,
+    desc: `${genderIcon} ${age} лет • ${trait1}, ${trait2}`,
+    assignedTo: null, // property uid or null
+  };
+}
+
+// Per-trader inventory system
+let traderInventories = {};
+let traderRefreshTimers = {};
+const TRADER_REFRESH_TIME = 420; // 7 minutes in seconds (5-10 range)
+const TRADER_SLAVE_COUNT_MIN = 3;
+const TRADER_SLAVE_COUNT_MAX = 6;
+
+function refreshTraderInventory(traderId) {
+  const count = TRADER_SLAVE_COUNT_MIN + Math.floor(rr() * (TRADER_SLAVE_COUNT_MAX - TRADER_SLAVE_COUNT_MIN + 1));
+  const traderType = traderId.includes('castle') ? 'castle' : 'village';
+  traderInventories[traderId] = [];
+  for (let i = 0; i < count; i++) {
+    traderInventories[traderId].push(generateSlave(traderType));
+  }
+  traderRefreshTimers[traderId] = TRADER_REFRESH_TIME * (0.7 + rr() * 0.6); // 5-10 min variance
+}
+
+function getTraderInventory(traderId) {
+  if (!traderInventories[traderId] || traderInventories[traderId].length === 0) {
+    refreshTraderInventory(traderId);
+  }
+  return traderInventories[traderId];
+}
+
+// ===== PROPERTIES / BUSINESSES =====
+const PROPERTY_TYPES = {
+  farm:       {id:'farm', name:'Ферма', icon:'🌾', cost:200, capacity:4, baseIncome:5,
+               desc:'Плодородная земля для выращивания урожая', bestSkill:'farming', area:'village'},
+  mine:       {id:'mine', name:'Рудник', icon:'⛏️', cost:450, capacity:6, baseIncome:8,
+               desc:'Шахта в горах, богатая рудой', bestSkill:'mining', area:'castle'},
+  forge:      {id:'forge', name:'Кузница', icon:'🔨', cost:600, capacity:3, baseIncome:14,
+               desc:'Горн и наковальня для ковки оружия', bestSkill:'smithing', area:'castle'},
+  tavern_prop:{id:'tavern_prop', name:'Таверна', icon:'🍺', cost:350, capacity:4, baseIncome:7,
+               desc:'Постоялый двор для путников', bestSkill:'cooking', area:'village'},
+  lumber:     {id:'lumber', name:'Лесопилка', icon:'🪓', cost:300, capacity:5, baseIncome:6,
+               desc:'Пилорама на опушке леса', bestSkill:'woodwork', area:'village'},
+  market:     {id:'market', name:'Торговая лавка', icon:'🏪', cost:500, capacity:3, baseIncome:10,
+               desc:'Лавка на главной площади', bestSkill:'trade', area:'village'},
+  mansion:    {id:'mansion', name:'Поместье', icon:'🏰', cost:1000, capacity:10, baseIncome:3,
+               desc:'Роскошное поместье с садом. Рабы живут в комфорте (-50% расходов)', bestSkill:null, area:'castle'},
+  herb_garden:{id:'herb_garden', name:'Травяной сад', icon:'🌿', cost:250, capacity:3, baseIncome:4,
+               desc:'Сад целебных трав', bestSkill:'healing', area:'village'},
+};
 
 // ===== AREA DEFINITIONS =====
 const AREAS = {
@@ -234,6 +459,9 @@ let respawnTimers = {};
 
 // ===== INIT GAME STATE =====
 function initGame() {
+  slaveIdCounter = 0;
+  traderInventories = {};
+  traderRefreshTimers = {};
   G = {
     x: 500, y: 500, r: 14, speed: 3.5,
     hp: 100, maxHp: 100, stamina: 100, maxStam: 100,
@@ -243,7 +471,7 @@ function initGame() {
     str: 3, agi: 3, vit: 3, chr: 3, pts: 0,
     inv: [{...ITEMS.rusty_sword, qty:1}, {...ITEMS.bread, qty:5}],
     weapon: null, armor: null,
-    slaves: [], running: false, invincible: 0,
+    slaves: [], properties: [], running: false, invincible: 0,
     facing: 0, atkAnim: 0,
     kills: 0, day: 1,
     bodyColor: '#5a5a8a',
@@ -251,6 +479,9 @@ function initGame() {
     hairColor: '#4a3020',
   };
   G.weapon = G.inv[0];
+  // Initialize both traders with slaves
+  refreshTraderInventory('village_trader');
+  refreshTraderInventory('castle_trader');
   recalc();
 }
 
@@ -290,8 +521,9 @@ function loadArea(areaId) {
     npcs.push(
       {x:325, y:285, r:11, name:'Торговец', color:'#8a7040', dialog:'trade'},
       {x:600, y:270, r:11, name:'Трактирщик', color:'#7a5030', dialog:'tavern'},
-      {x:870, y:310, r:11, name:'Работорговец', color:'#5a3020', dialog:'slave'},
+      {x:870, y:310, r:11, name:'Работорговец', color:'#5a3020', dialog:'slave', traderId:'village_trader'},
       {x:745, y:560, r:11, name:'Кузнец', color:'#705030', dialog:'trade'},
+      {x:480, y:530, r:11, name:'Староста', color:'#6a6040', dialog:'property'},
     );
     // Portals
     portals.push(
@@ -331,7 +563,8 @@ function loadArea(areaId) {
     npcs.push(
       {x:340, y:400, r:11, name:'Корол. торговец', color:'#8080a0', dialog:'trade_castle'},
       {x:650, y:370, r:11, name:'Трактирщик', color:'#705848', dialog:'tavern'},
-      {x:430, y:580, r:11, name:'Работорговец', color:'#504030', dialog:'slave'},
+      {x:430, y:580, r:11, name:'Работорговец', color:'#504030', dialog:'slave', traderId:'castle_trader'},
+      {x:280, y:500, r:11, name:'Управляющий', color:'#6a6080', dialog:'property'},
     );
     for (let i = 0; i < 3; i++) spawnEnemy('knight', 700+rr()*500, 200+rr()*600);
     for (let i = 0; i < 10; i++) terrainTrees.push({x:rr()*aw, y:rr()*ah, s:10+rr()*8, type:'oak'});
@@ -1096,13 +1329,50 @@ function update(dt) {
 
   // Day timer (1 day = 45 seconds)
   dayTimer += dt;
+
+  // Trader inventory refresh timers
+  for (const tid in traderRefreshTimers) {
+    traderRefreshTimers[tid] -= dt;
+    if (traderRefreshTimers[tid] <= 0) {
+      refreshTraderInventory(tid);
+      log(`🔄 Новые рабы у работорговца!`, 'li');
+    }
+  }
+
   if (dayTimer >= 45) {
     dayTimer = 0; G.day++;
     document.getElementById('hud-day').textContent = `День ${G.day}`;
     let inc = 0, up = 0;
+    // Income from unassigned slaves (basic)
     G.slaves.forEach(s => {
-      inc += s.income || 0; up += s.upkeep || 0;
-      if (s.healer) G.hp = Math.min(G.maxHp, G.hp + (s.healAmt || 15));
+      if (s.healer && !s.assignedTo) G.hp = Math.min(G.maxHp, G.hp + (s.healAmt || 15));
+      if (!s.assignedTo) {
+        inc += s.income || 0;
+        up += s.upkeep || 0;
+      }
+    });
+    // Income from properties with assigned slaves
+    G.properties.forEach(prop => {
+      const assigned = G.slaves.filter(s => s.assignedTo === prop.uid);
+      const pt = PROPERTY_TYPES[prop.typeId];
+      inc += pt.baseIncome; // base property income
+      assigned.forEach(s => {
+        // Skill match bonus
+        let slaveInc = s.income || 0;
+        if (pt.bestSkill && s.skill && s.skill.id === pt.bestSkill) {
+          slaveInc = Math.floor(slaveInc * 1.8); // 80% bonus for matching skill
+        } else if (s.income > 0) {
+          slaveInc = Math.floor(slaveInc * 1.2); // 20% bonus for any worker in property
+        }
+        inc += slaveInc;
+        if (s.healer) G.hp = Math.min(G.maxHp, G.hp + (s.healAmt || 15));
+        // Mansion reduces upkeep by 50%
+        if (prop.typeId === 'mansion') {
+          up += Math.floor((s.upkeep || 0) * 0.5);
+        } else {
+          up += s.upkeep || 0;
+        }
+      });
     });
     const net = inc - up;
     if (net !== 0) {
@@ -1267,6 +1537,7 @@ addEventListener('keydown', e => {
   if ((k === 'i' || k === 'ш') && G.running) { if (overlayOpen) closeAllOv(); else openInv(); }
   if ((k === 'c' || k === 'с') && G.running) { if (overlayOpen) closeAllOv(); else openStats(); }
   if ((k === 'p' || k === 'з') && G.running) { if (overlayOpen) closeAllOv(); else openParty(); }
+  if ((k === 'b' || k === 'и') && G.running) { if (overlayOpen) closeAllOv(); else openProperties(); }
   if (k === 'escape') closeAllOv();
   if (k === 'shift' && dashCooldown <= 0 && dashTimer <= 0 && G.stamina >= 18) {
     e.preventDefault();
@@ -1363,45 +1634,121 @@ window.sellItem = (i, p) => {
 };
 
 // ===== SLAVE MARKET =====
-function openSlaveMarket() {
+let currentTraderId = 'village_trader';
+
+function openSlaveMarket(traderId) {
+  currentTraderId = traderId || 'village_trader';
   document.getElementById('slave-gold').textContent = `💰 ${G.gold}`;
   const content = document.getElementById('slave-content');
-  let html = '<h3>🏷️ Рабы на продажу</h3><div class="grid">';
-  SLAVE_TYPES.forEach((s, i) => {
-    const price = Math.floor(s.cost * (1 - G.chr * .02));
-    const ok = G.gold >= price;
-    html += `<div class="card" style="opacity:${ok ? 1 : .4}" ${ok ? `onclick="buySlave(${i})"` : ''}>
-      <div style="font-size:24px;float:left;margin-right:8px">${s.icon}</div>
-      <div class="nm">${s.name}</div>
-      <div class="ds">${s.desc}</div>
-      ${s.fighter ? `<div class="ds" style="color:#8b8">⚔️${s.atk} 🛡️${s.def} ❤️${s.hp}</div>` : ''}
-      <div class="pr">${price} 💰</div></div>`;
-  });
-  html += '</div>';
+  const inv = getTraderInventory(currentTraderId);
+  const timeLeft = Math.max(0, Math.ceil(traderRefreshTimers[currentTraderId] || 0));
+  const mins = Math.floor(timeLeft / 60);
+  const secs = timeLeft % 60;
+
+  let html = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+    <h3 style="margin:0">🏷️ Рабы на продажу</h3>
+    <span style="color:#888;font-size:11px">🔄 Обновление через ${mins}:${secs < 10 ? '0' : ''}${secs}</span>
+  </div>`;
+
+  if (inv.length === 0) {
+    html += '<p style="color:#666;padding:16px">Сейчас нет рабов в наличии. Приходите позже.</p>';
+  } else {
+    html += '<div class="grid">';
+    inv.forEach((s, i) => {
+      const price = Math.floor(s.cost * (1 - G.chr * .02));
+      const ok = G.gold >= price;
+      const genderColor = s.gender === 'f' ? '#f8a' : '#8af';
+      html += `<div class="card" style="opacity:${ok ? 1 : .4};padding:10px;${ok ? 'cursor:pointer' : ''}" ${ok ? `onclick="buySlave(${i})"` : ''}>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <span style="font-size:22px">${s.icon}</span>
+          <div style="flex:1">
+            <div class="nm" style="font-size:13px">${s.name} <span style="color:${genderColor}">${s.genderIcon}</span></div>
+            <div style="color:#888;font-size:11px">${s.roleDesc} • ${s.age} лет</div>
+          </div>
+        </div>
+        <div style="font-size:11px;color:#999;margin-bottom:4px">
+          <span style="color:#c90">${s.starStr}</span> ${s.skill.icon} ${s.skill.name}
+        </div>
+        <div style="font-size:11px;color:#787878;margin-bottom:4px;font-style:italic">"${s.backstory}"</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px">
+          <span style="font-size:10px;background:rgba(255,255,255,.07);padding:1px 5px;border-radius:3px">${s.trait1}</span>
+          <span style="font-size:10px;background:rgba(255,255,255,.07);padding:1px 5px;border-radius:3px">${s.trait2}</span>
+        </div>
+        <div style="font-size:11px;color:#aaa;display:flex;gap:8px;margin-bottom:4px">
+          <span>💪${s.str}</span><span>🏃${s.agi}</span><span>❤️${s.vit}</span><span>🗣️${s.chr}</span>
+        </div>
+        ${s.fighter ? `<div style="font-size:11px;color:#8b8">⚔️${s.atk} 🛡️${s.def} ❤️${s.hp}</div>` : ''}
+        ${s.healer ? `<div style="font-size:11px;color:#a8f">💊 Лечение: +${s.healAmt} HP/день</div>` : ''}
+        ${s.income > 0 ? `<div style="font-size:11px;color:#a84">💰 Доход: +${s.income}/день</div>` : ''}
+        <div class="pr" style="margin-top:4px">${price} 💰</div>
+      </div>`;
+    });
+    html += '</div>';
+  }
+
   if (G.slaves.length > 0) {
     html += '<hr class="sep"><h3>⛓️ Ваши рабы</h3>';
-    const totalInc = G.slaves.reduce((s, sl) => s + (sl.income || 0), 0);
-    const totalUp = G.slaves.reduce((s, sl) => s + (sl.upkeep || 0), 0);
+    const totalInc = calcTotalIncome();
+    const totalUp = calcTotalUpkeep();
     html += `<p style="color:#999;font-size:12px;margin-bottom:8px">Доход: +${totalInc}/день, Расходы: -${totalUp}/день, Чистый: ${totalInc - totalUp}/день</p>`;
     G.slaves.forEach((s, i) => {
+      const genderColor = s.gender === 'f' ? '#f8a' : '#8af';
+      const assignedProp = s.assignedTo ? G.properties.find(p => p.uid === s.assignedTo) : null;
+      const assignedText = assignedProp ? `📍 ${PROPERTY_TYPES[assignedProp.typeId].name}` : '📍 Бродяга';
       html += `<div class="card" style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
         <div style="font-size:26px">${s.icon}</div>
-        <div style="flex:1"><div class="nm">${s.name}</div><div class="ds">${s.desc}</div></div>
-        <button class="btn btn-r" onclick="freeSlave(${i})">Продать (${Math.floor(s.cost * .35)}💰)</button></div>`;
+        <div style="flex:1">
+          <div class="nm">${s.name} <span style="color:${genderColor}">${s.genderIcon}</span></div>
+          <div class="ds">${s.roleDesc} • ${s.age} лет • ${s.skill.icon}${s.starStr}</div>
+          <div style="font-size:10px;color:#777">${assignedText}</div>
+        </div>
+        <button class="btn btn-r" onclick="freeSlave(${i})">Продать (${Math.floor(s.cost * .35)}💰)</button>
+      </div>`;
     });
   }
   content.innerHTML = html;
   openOv('ov-slave');
 }
+
+function calcTotalIncome() {
+  let inc = 0;
+  G.slaves.forEach(s => {
+    if (!s.assignedTo) { inc += s.income || 0; return; }
+    const prop = G.properties.find(p => p.uid === s.assignedTo);
+    if (prop) {
+      const pt = PROPERTY_TYPES[prop.typeId];
+      let slaveInc = s.income || 0;
+      if (pt.bestSkill && s.skill && s.skill.id === pt.bestSkill) slaveInc = Math.floor(slaveInc * 1.8);
+      else if (s.income > 0) slaveInc = Math.floor(slaveInc * 1.2);
+      inc += slaveInc;
+    }
+  });
+  G.properties.forEach(p => inc += PROPERTY_TYPES[p.typeId].baseIncome);
+  return inc;
+}
+function calcTotalUpkeep() {
+  let up = 0;
+  G.slaves.forEach(s => {
+    if (s.assignedTo) {
+      const prop = G.properties.find(p => p.uid === s.assignedTo);
+      if (prop && prop.typeId === 'mansion') up += Math.floor((s.upkeep || 0) * 0.5);
+      else up += s.upkeep || 0;
+    } else up += s.upkeep || 0;
+  });
+  return up;
+}
+
 window.buySlave = i => {
-  const s = SLAVE_TYPES[i]; if (!s) return;
+  const inv = getTraderInventory(currentTraderId);
+  const s = inv[i]; if (!s) return;
   const price = Math.floor(s.cost * (1 - G.chr * .02));
   if (G.gold < price) return;
   G.gold -= price;
   G.slaves.push({...s});
+  inv.splice(i, 1); // Remove from trader inventory
   recalc();
-  log(`⛓️ Куплен: ${s.name}`, 'lg');
-  openSlaveMarket(); updateHUD();
+  log(`⛓️ Куплен: ${s.name} (${s.genderIcon} ${s.age} лет, ${s.skill.icon} ${s.skill.name})`, 'lg');
+  openSlaveMarket(currentTraderId); updateHUD();
 };
 window.freeSlave = i => {
   const s = G.slaves[i]; if (!s) return;
@@ -1409,7 +1756,7 @@ window.freeSlave = i => {
   G.gold += ret;
   log(`Продан: ${s.name} +${ret}💰`, 'lg');
   G.slaves.splice(i, 1); recalc();
-  openSlaveMarket(); updateHUD();
+  openSlaveMarket(currentTraderId); updateHUD();
 };
 
 // ===== TAVERN =====
@@ -1421,11 +1768,15 @@ function openTavern() {
     'Работорговец продаёт бойцов — они сражаются рядом с вами!',
     'В замке к северу — лучшие товары и оружие.',
     'Виверна в пустыне охраняет несметные сокровища.',
-    'Купите рудокопов — лучший доход за цену.',
+    'Купите ферму или рудник — рабы будут работать за вас!',
     'Харизма снижает цены у торговцев.',
     'Shift — рывок, позволяет уклоняться от атак!',
     'Тролли медленные, но бьют очень больно.',
     'Клавиши 1-2-3 для быстрого использования зелий.',
+    'У каждого работорговца свои уникальные рабы. Они обновляются!',
+    'Назначайте рабов с подходящими навыками — бонус +80% дохода!',
+    'Поместье уменьшает расходы на содержание рабов вдвое.',
+    'Ищите старосту в деревне или управляющего в замке для покупки владений.',
   ].sort(() => rr() - .5).slice(0, 3);
   content.innerHTML = `
     <p style="color:#887;font-size:13px;margin-bottom:12px">Добро пожаловать, путник!</p>
@@ -1459,7 +1810,8 @@ window.tavernMeal = () => {
 function talkNPC(npc) {
   if (npc.dialog === 'trade' || npc.dialog === 'trade_castle') openShop();
   else if (npc.dialog === 'tavern') openTavern();
-  else if (npc.dialog === 'slave') openSlaveMarket();
+  else if (npc.dialog === 'slave') openSlaveMarket(npc.traderId);
+  else if (npc.dialog === 'property') openProperties();
 }
 
 // ===== INVENTORY =====
@@ -1508,6 +1860,7 @@ function openStats() {
       <div>⚔️ Атака: ${G.atk}</div><div>🛡️ Защита: ${G.def}</div>
       <div>💰 Золото: ${G.gold}</div><div>🗡️ Оружие: ${G.weapon ? G.weapon.name : 'нет'}</div>
       <div>🛡️ Броня: ${G.armor ? G.armor.name : 'нет'}</div><div>👥 Рабов: ${G.slaves.length}</div>
+      <div>🏠 Владений: ${G.properties.length}</div><div>💰 Доход: +${calcTotalIncome() - calcTotalUpkeep()}/день</div>
     </div>
     <h3 style="color:#d4a017">Характеристики <span style="color:#888;font-size:12px">(очков: ${G.pts})</span></h3>
     <div style="display:grid;grid-template-columns:1fr auto;gap:6px;font-size:13px;margin-top:8px">
@@ -1531,22 +1884,99 @@ function openParty() {
   if (G.slaves.length === 0) {
     html = '<p style="color:#666;font-size:13px;padding:10px">У вас нет рабов. Купите их у работорговца в деревне или замке.</p>';
   } else {
-    const totalInc = G.slaves.reduce((s, sl) => s + (sl.income || 0), 0);
-    const totalUp = G.slaves.reduce((s, sl) => s + (sl.upkeep || 0), 0);
-    html = `<p style="color:#999;font-size:12px;margin-bottom:10px">💰 Доход: +${totalInc}/день | Расходы: -${totalUp}/день | Чистая прибыль: ${totalInc - totalUp}/день</p>`;
+    const totalInc = calcTotalIncome();
+    const totalUp = calcTotalUpkeep();
+    html = `<p style="color:#999;font-size:12px;margin-bottom:10px">💰 Доход: +${totalInc}/день | Расходы: -${totalUp}/день | Чистая прибыль: ${totalInc - totalUp}/день | Рабов: ${G.slaves.length}</p>`;
     G.slaves.forEach((s, i) => {
-      html += `<div class="card" style="display:flex;align-items:center;gap:10px;margin-bottom:5px">
-        <div style="font-size:28px">${s.icon}</div>
-        <div style="flex:1"><div class="nm">${s.name}</div><div class="ds">${s.desc}</div>
-        ${s.fighter ? `<div class="ds" style="color:#8b8">⚔️${s.atk} 🛡️${s.def} ❤️${s.hp}</div>` : ''}
+      const genderColor = s.gender === 'f' ? '#f8a' : '#8af';
+      const assignedProp = s.assignedTo ? G.properties.find(p => p.uid === s.assignedTo) : null;
+      const assignedText = assignedProp ? `📍 ${PROPERTY_TYPES[assignedProp.typeId].icon} ${PROPERTY_TYPES[assignedProp.typeId].name}` : (s.fighter ? '📍 В отряде' : '📍 Без назначения');
+
+      // Calculate effective income for this slave
+      let effectiveInc = s.income || 0;
+      if (assignedProp) {
+        const pt = PROPERTY_TYPES[assignedProp.typeId];
+        if (pt.bestSkill && s.skill && s.skill.id === pt.bestSkill) effectiveInc = Math.floor(effectiveInc * 1.8);
+        else if (s.income > 0) effectiveInc = Math.floor(effectiveInc * 1.2);
+      }
+      let effectiveUp = s.upkeep || 0;
+      if (assignedProp && assignedProp.typeId === 'mansion') effectiveUp = Math.floor(effectiveUp * 0.5);
+
+      html += `<div class="card" style="padding:10px;margin-bottom:5px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="font-size:28px">${s.icon}</div>
+          <div style="flex:1">
+            <div class="nm">${s.name} <span style="color:${genderColor}">${s.genderIcon}</span> <span style="color:#888;font-size:11px">${s.age} лет</span></div>
+            <div class="ds">${s.roleDesc} • ${s.skill.icon} <span style="color:#c90">${s.starStr}</span></div>
+            <div style="font-size:10px;color:#888;margin-top:2px">${s.trait1}, ${s.trait2}</div>
+            <div style="font-size:10px;color:#666;font-style:italic;margin-top:1px">"${s.backstory}"</div>
+          </div>
         </div>
-        <button class="btn btn-r" onclick="freeSlave2(${i})">Продать</button>
+        <div style="display:flex;gap:10px;align-items:center;margin-top:6px;font-size:11px;flex-wrap:wrap">
+          <span style="color:#aaa">💪${s.str} 🏃${s.agi} ❤️${s.vit} 🗣️${s.chr}</span>
+          ${s.fighter ? `<span style="color:#8b8">⚔️${s.atk} 🛡️${s.def} ❤️${s.hp}</span>` : ''}
+          ${s.healer ? `<span style="color:#a8f">💊+${s.healAmt} HP</span>` : ''}
+          ${effectiveInc > 0 ? `<span style="color:#a84">+${effectiveInc}💰/день</span>` : ''}
+          <span style="color:#a44">-${effectiveUp}💰/день</span>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;margin-top:6px">
+          <span style="font-size:11px;color:#888">${assignedText}</span>
+          <div style="flex:1"></div>
+          ${!s.fighter && G.properties.length > 0 ? `<select style="font-size:11px;background:#2a2a30;color:#ccc;border:1px solid #444;padding:2px 4px;border-radius:3px" onchange="assignSlaveToProperty(${i}, this.value)">
+            <option value="">Переназначить...</option>
+            <option value="none" ${!s.assignedTo ? 'selected' : ''}>Без назначения</option>
+            ${G.properties.map(p => {
+              const pt = PROPERTY_TYPES[p.typeId];
+              const cnt = G.slaves.filter(ss => ss.assignedTo === p.uid).length;
+              const isBest = s.skill && pt.bestSkill === s.skill.id;
+              return `<option value="${p.uid}" ${s.assignedTo === p.uid ? 'selected' : ''} ${cnt >= pt.capacity && s.assignedTo !== p.uid ? 'disabled' : ''}>${pt.icon} ${pt.name} (${cnt}/${pt.capacity})${isBest ? ' ★' : ''}</option>`;
+            }).join('')}
+          </select>` : ''}
+          <button class="btn btn-r" style="font-size:11px;padding:3px 8px" onclick="freeSlave2(${i})">Продать</button>
+        </div>
       </div>`;
     });
   }
+
+  // Summary of properties
+  if (G.properties.length > 0) {
+    html += '<hr class="sep"><h3>🏠 Ваши владения</h3>';
+    G.properties.forEach(p => {
+      const pt = PROPERTY_TYPES[p.typeId];
+      const assigned = G.slaves.filter(s => s.assignedTo === p.uid);
+      html += `<div class="card" style="padding:8px;margin-bottom:4px;display:flex;align-items:center;gap:8px">
+        <span style="font-size:22px">${pt.icon}</span>
+        <div style="flex:1">
+          <div class="nm">${pt.name}</div>
+          <div class="ds">Рабочих: ${assigned.length}/${pt.capacity} | Доход: +${pt.baseIncome}💰/день</div>
+        </div>
+      </div>`;
+    });
+  }
+
   document.getElementById('party-content').innerHTML = html;
   openOv('ov-party');
 }
+
+window.assignSlaveToProperty = (slaveIdx, propUid) => {
+  const s = G.slaves[slaveIdx]; if (!s) return;
+  if (propUid === 'none' || propUid === '') {
+    s.assignedTo = null;
+    log(`${s.name} снят с назначения`, 'li');
+  } else {
+    const uid = parseInt(propUid);
+    const prop = G.properties.find(p => p.uid === uid);
+    if (!prop) return;
+    const pt = PROPERTY_TYPES[prop.typeId];
+    const cnt = G.slaves.filter(ss => ss.assignedTo === uid).length;
+    if (cnt >= pt.capacity) { log('❌ Нет мест!', 'ld'); return; }
+    s.assignedTo = uid;
+    const isBest = s.skill && pt.bestSkill === s.skill.id;
+    log(`${s.name} назначен в ${pt.name}${isBest ? ' (идеальная работа!)' : ''}`, 'ls');
+  }
+  openParty(); updateHUD();
+};
+
 window.freeSlave2 = i => {
   const s = G.slaves[i]; if (!s) return;
   const ret = Math.floor(s.cost * .35);
@@ -1555,6 +1985,159 @@ window.freeSlave2 = i => {
   G.slaves.splice(i, 1); recalc(); openParty(); updateHUD();
 };
 window.openParty = openParty;
+
+// ===== PROPERTIES =====
+let propertyUidCounter = 0;
+
+function openProperties() {
+  document.getElementById('prop-gold').textContent = `💰 ${G.gold}`;
+  const content = document.getElementById('prop-content');
+  let html = '';
+
+  // Available for purchase
+  const availableArea = curArea; // only show properties for current area
+  const available = Object.values(PROPERTY_TYPES).filter(pt => {
+    if (pt.area !== availableArea) return false;
+    return !G.properties.some(p => p.typeId === pt.id); // can buy only one of each
+  });
+
+  if (available.length > 0) {
+    html += '<h3>🏗️ Доступно для покупки</h3><div class="grid">';
+    available.forEach(pt => {
+      const price = Math.floor(pt.cost * (1 - G.chr * .015));
+      const ok = G.gold >= price;
+      html += `<div class="card" style="opacity:${ok ? 1 : .4};padding:10px" ${ok ? `onclick="buyProperty('${pt.id}')"` : ''}>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <span style="font-size:24px">${pt.icon}</span>
+          <div>
+            <div class="nm">${pt.name}</div>
+            <div class="ds">${pt.desc}</div>
+          </div>
+        </div>
+        <div style="font-size:11px;color:#aaa;margin-bottom:4px">
+          👥 Вместимость: ${pt.capacity} рабов | 💰 Базовый доход: +${pt.baseIncome}/день
+          ${pt.bestSkill ? `| ★ Лучший навык: ${SKILL_TYPES.find(s => s.id === pt.bestSkill)?.name || pt.bestSkill}` : ''}
+        </div>
+        <div class="pr">${price} 💰</div>
+      </div>`;
+    });
+    html += '</div>';
+  } else {
+    html += `<p style="color:#777;font-size:12px;margin-bottom:10px">${curArea === 'village' || curArea === 'castle' ? 'Все владения в этой локации уже куплены!' : 'В этой локации нет владений для покупки. Ищите в деревне или замке.'}</p>`;
+  }
+
+  // Owned properties
+  if (G.properties.length > 0) {
+    html += '<hr class="sep"><h3>🏠 Ваши владения</h3>';
+    const totalInc = calcTotalIncome();
+    const totalUp = calcTotalUpkeep();
+    html += `<p style="color:#999;font-size:12px;margin-bottom:8px">Общий доход: +${totalInc}/день | Расходы: -${totalUp}/день | Прибыль: ${totalInc - totalUp}/день</p>`;
+
+    G.properties.forEach((prop, pi) => {
+      const pt = PROPERTY_TYPES[prop.typeId];
+      const assigned = G.slaves.filter(s => s.assignedTo === prop.uid);
+      const unassigned = G.slaves.filter(s => !s.assignedTo && !s.fighter);
+
+      html += `<div class="card" style="padding:12px;margin-bottom:8px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <span style="font-size:28px">${pt.icon}</span>
+          <div style="flex:1">
+            <div class="nm">${pt.name}</div>
+            <div class="ds">${pt.desc}</div>
+            <div style="font-size:11px;color:#aaa;margin-top:2px">
+              👥 ${assigned.length}/${pt.capacity} | 💰 +${pt.baseIncome}/день (базовый)
+              ${pt.bestSkill ? `| ★ ${SKILL_TYPES.find(s => s.id === pt.bestSkill)?.name || ''}` : ''}
+            </div>
+          </div>
+          <button class="btn btn-r" style="font-size:11px" onclick="sellProperty(${pi})">Продать (${Math.floor(pt.cost * .4)}💰)</button>
+        </div>`;
+
+      // Show assigned slaves
+      if (assigned.length > 0) {
+        html += '<div style="margin-left:10px;border-left:2px solid #333;padding-left:10px">';
+        assigned.forEach(s => {
+          const isBest = s.skill && pt.bestSkill === s.skill.id;
+          const genderColor = s.gender === 'f' ? '#f8a' : '#8af';
+          let effectiveInc = s.income || 0;
+          if (isBest) effectiveInc = Math.floor(effectiveInc * 1.8);
+          else if (s.income > 0) effectiveInc = Math.floor(effectiveInc * 1.2);
+          html += `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;font-size:12px">
+            <span>${s.icon}</span>
+            <span style="color:${genderColor}">${s.genderIcon}</span>
+            <span style="flex:1">${s.firstName} ${s.skill.icon}${s.starStr}${isBest ? ' <span style="color:#0f0">★ ИДЕАЛЬНО</span>' : ''}</span>
+            <span style="color:#a84">+${effectiveInc}💰</span>
+            <button style="font-size:10px;background:#533;color:#faa;border:none;padding:2px 6px;border-radius:3px;cursor:pointer" onclick="unassignSlave(${G.slaves.indexOf(s)})">✕</button>
+          </div>`;
+        });
+        html += '</div>';
+      }
+
+      // Add slave button
+      if (assigned.length < pt.capacity && unassigned.length > 0) {
+        html += `<div style="margin-top:6px"><select style="font-size:11px;background:#2a2a30;color:#ccc;border:1px solid #444;padding:3px 6px;border-radius:3px" onchange="assignFromProperty(this.value, ${prop.uid})">
+          <option value="">+ Назначить раба...</option>
+          ${unassigned.map(s => {
+            const idx = G.slaves.indexOf(s);
+            const isBest = s.skill && pt.bestSkill === s.skill.id;
+            return `<option value="${idx}">${s.genderIcon} ${s.firstName} — ${s.skill.icon} ${s.skill.name} ${s.starStr}${isBest ? ' ★' : ''}</option>`;
+          }).join('')}
+        </select></div>`;
+      }
+
+      html += '</div>';
+    });
+  }
+
+  content.innerHTML = html;
+  openOv('ov-prop');
+}
+
+window.buyProperty = id => {
+  const pt = PROPERTY_TYPES[id]; if (!pt) return;
+  if (G.properties.some(p => p.typeId === id)) { log('❌ У вас уже есть это владение!', 'ld'); return; }
+  const price = Math.floor(pt.cost * (1 - G.chr * .015));
+  if (G.gold < price) return;
+  G.gold -= price;
+  G.properties.push({uid: ++propertyUidCounter, typeId: id});
+  log(`🏗️ Куплено: ${pt.icon} ${pt.name}!`, 'ls');
+  openProperties(); updateHUD();
+};
+
+window.sellProperty = pi => {
+  const prop = G.properties[pi]; if (!prop) return;
+  const pt = PROPERTY_TYPES[prop.typeId];
+  const ret = Math.floor(pt.cost * .4);
+  // Unassign all slaves from this property
+  G.slaves.forEach(s => { if (s.assignedTo === prop.uid) s.assignedTo = null; });
+  G.gold += ret;
+  G.properties.splice(pi, 1);
+  log(`Продано: ${pt.name} +${ret}💰`, 'lg');
+  openProperties(); updateHUD();
+};
+
+window.assignFromProperty = (slaveIdxStr, propUid) => {
+  if (!slaveIdxStr || slaveIdxStr === '') return;
+  const idx = parseInt(slaveIdxStr);
+  const s = G.slaves[idx]; if (!s) return;
+  const prop = G.properties.find(p => p.uid === propUid);
+  if (!prop) return;
+  const pt = PROPERTY_TYPES[prop.typeId];
+  const cnt = G.slaves.filter(ss => ss.assignedTo === propUid).length;
+  if (cnt >= pt.capacity) { log('❌ Нет мест!', 'ld'); return; }
+  s.assignedTo = propUid;
+  const isBest = s.skill && pt.bestSkill === s.skill.id;
+  log(`${s.name} назначен в ${pt.name}${isBest ? ' (идеально!)' : ''}`, 'ls');
+  openProperties(); updateHUD();
+};
+
+window.unassignSlave = idx => {
+  const s = G.slaves[idx]; if (!s) return;
+  s.assignedTo = null;
+  log(`${s.name} снят с назначения`, 'li');
+  openProperties(); updateHUD();
+};
+
+window.openProperties = openProperties;
 
 // ===== GAME LOOP =====
 function gameLoop(ts) {
@@ -1585,7 +2168,8 @@ function startGame() {
   log('🏰 Добро пожаловать в Тёмные Века!', 'li');
   log('WASD — движение, ЛКМ — атака по направлению мыши', 'li');
   log('[E] — разговор с NPC, [Shift] — рывок', 'li');
-  log('Исследуйте 6 локаций, торгуйте и побеждайте!', 'li');
+  log('[B] — владения, [P] — отряд и рабы', 'li');
+  log('Исследуйте 6 локаций, торгуйте, покупайте владения!', 'li');
   lastTime = performance.now();
 }
 
