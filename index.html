@@ -144,6 +144,7 @@ canvas{display:block}
  <div class="bb" onclick="openStats()">📊 Персонаж [C]</div>
  <div class="bb" onclick="openParty()">👥 Отряд [P]</div>
  <div class="bb" onclick="openProperties()">🏠 Владения [B]</div>
+ <div class="bb" onclick="openQuestLog()">📜 Квесты [J]</div>
 </div>
 
 <div id="start">
@@ -170,6 +171,10 @@ canvas{display:block}
      <label onclick="ccSetGender('m')"><input type="radio" name="ccg" checked><span>♂ Мужчина</span></label>
      <label onclick="ccSetGender('f')"><input type="radio" name="ccg"><span>♀ Женщина</span></label>
     </div>
+   </div>
+   <div class="cc-section">
+    <h3>🧬 Раса</h3>
+    <div class="cc-classes" id="cc-races" style="grid-template-columns:1fr 1fr 1fr"></div>
    </div>
    <div class="cc-section">
     <h3>🎭 Класс</h3>
@@ -250,6 +255,10 @@ canvas{display:block}
  <div id="prop-content"></div>
 </div></div>
 
+<div class="ov" id="ov-quest"><div class="pnl"><button class="xbtn" onclick="closeOv('ov-quest')">✕</button>
+ <div id="quest-content"></div>
+</div></div>
+
 <script>
 // ======================================================
 // ТЁМНЫЕ ВЕКА — полноценная Action RPG
@@ -263,12 +272,20 @@ addEventListener('resize', resize); resize();
 
 // ===== ITEMS DATABASE =====
 const ITEMS = {
-  rusty_sword:  {id:'rusty_sword', name:'Ржавый меч',  type:'weapon',atk:3, val:15, desc:'Старый ржавый меч'},
-  iron_sword:   {id:'iron_sword',  name:'Железный меч', type:'weapon',atk:7, val:55, desc:'Добротный клинок'},
-  steel_sword:  {id:'steel_sword', name:'Стальной меч', type:'weapon',atk:12,val:130,desc:'Закалённая сталь'},
-  great_axe:    {id:'great_axe',   name:'Секира',       type:'weapon',atk:16,val:190,desc:'Тяжёлая секира'},
-  hero_blade:   {id:'hero_blade',  name:'Клинок Героя', type:'weapon',atk:28,val:600,desc:'Легендарный'},
-  dark_scythe:  {id:'dark_scythe', name:'Тёмная Коса',  type:'weapon',atk:35,val:900,desc:'Проклятое оружие'},
+  rusty_sword:  {id:'rusty_sword', name:'Ржавый меч',  type:'weapon',atk:3, val:15, desc:'Старый ржавый меч', wtype:'sword'},
+  iron_sword:   {id:'iron_sword',  name:'Железный меч', type:'weapon',atk:7, val:55, desc:'Добротный клинок', wtype:'sword'},
+  steel_sword:  {id:'steel_sword', name:'Стальной меч', type:'weapon',atk:12,val:130,desc:'Закалённая сталь', wtype:'sword'},
+  great_axe:    {id:'great_axe',   name:'Секира',       type:'weapon',atk:16,val:190,desc:'Тяжёлая секира', wtype:'axe'},
+  hero_blade:   {id:'hero_blade',  name:'Клинок Героя', type:'weapon',atk:28,val:600,desc:'Легендарный', wtype:'sword'},
+  dark_scythe:  {id:'dark_scythe', name:'Тёмная Коса',  type:'weapon',atk:35,val:900,desc:'Проклятое оружие', wtype:'scythe'},
+  dagger:       {id:'dagger',      name:'Кинжал',       type:'weapon',atk:5, val:35, desc:'Быстрый и смертоносный', wtype:'dagger'},
+  twin_daggers: {id:'twin_daggers',name:'Парные кинжалы',type:'weapon',atk:10,val:100,desc:'Двойная смерть', wtype:'dagger'},
+  mace:         {id:'mace',        name:'Булава',       type:'weapon',atk:8, val:65, desc:'Тяжёлая железная булава', wtype:'mace'},
+  war_hammer:   {id:'war_hammer',  name:'Боевой молот', type:'weapon',atk:18,val:240,desc:'Сокрушающий удар', wtype:'mace'},
+  hunting_bow:  {id:'hunting_bow', name:'Охотничий лук',type:'weapon',atk:6, val:45, desc:'Точный и надёжный', wtype:'bow'},
+  war_bow:      {id:'war_bow',     name:'Боевой лук',   type:'weapon',atk:14,val:160,desc:'Мощный длинный лук', wtype:'bow'},
+  staff:        {id:'staff',       name:'Посох',        type:'weapon',atk:4, val:30, desc:'Торговый посох', wtype:'staff'},
+  magic_staff:  {id:'magic_staff', name:'Магический жезл',type:'weapon',atk:20,val:350,desc:'Пульсирует энергией', wtype:'staff'},
   leather:   {id:'leather', name:'Кожаная броня', type:'armor',def:3, val:30, desc:'Лёгкая защита'},
   chain:     {id:'chain',   name:'Кольчуга',      type:'armor',def:7, val:90, desc:'Надёжная кольчуга'},
   plate:     {id:'plate',   name:'Латы',          type:'armor',def:13,val:220,desc:'Тяжёлые латы'},
@@ -279,6 +296,49 @@ const ITEMS = {
   elixir: {id:'elixir', name:'Эликсир',  type:'food',heal:999,val:90, desc:'Полное HP'},
   stam_pot:{id:'stam_pot',name:'Зелье Стамины',type:'stamina',heal:50,val:20,desc:'+50 Стамина'},
 };
+
+// ===== RACES =====
+const RACES = {
+  human:  {id:'human',  name:'Человек', icon:'👤', skinRange:['#f0dcc0','#e8c8a0','#e0b888','#d4a878','#c09060','#b87848'],
+           bonusStr:0, bonusAgi:0, bonusVit:1, bonusChr:1, earType:'normal', heightMod:1.0, desc:'Универсальный и стойкий'},
+  elf:    {id:'elf',    name:'Эльф',    icon:'🧝', skinRange:['#f5e8d0','#e8dcc0','#e0d4b8','#f0e0c8','#ddd0a8','#c8bfa0'],
+           bonusStr:-1,bonusAgi:2, bonusVit:-1,bonusChr:2, earType:'pointed', heightMod:1.05, desc:'Грациозный и мудрый'},
+  dwarf:  {id:'dwarf',  name:'Дварф',   icon:'⛏️', skinRange:['#e0c098','#d4a878','#c89868','#b88858','#d0a070','#c09060'],
+           bonusStr:2, bonusAgi:-1,bonusVit:2, bonusChr:-1,earType:'normal', heightMod:0.8, desc:'Крепкий и упрямый'},
+  orc:    {id:'orc',    name:'Орк',     icon:'👹', skinRange:['#6a8a50','#5a7a40','#7a9a60','#4a6a30','#8aa070','#609050'],
+           bonusStr:3, bonusAgi:0, bonusVit:1, bonusChr:-2,earType:'pointed', heightMod:1.1, desc:'Свирепый воин'},
+  undead: {id:'undead', name:'Нежить',  icon:'💀', skinRange:['#a0a090','#8a8a7a','#b0b0a0','#909080','#787870','#c0c0b0'],
+           bonusStr:1, bonusAgi:1, bonusVit:-1,bonusChr:-1,earType:'normal', heightMod:1.0, desc:'Восставший из мёртвых'},
+};
+const RACE_IDS = Object.keys(RACES);
+
+// ===== QUEST SYSTEM =====
+const QUESTS = [
+  {id:'q_rats', name:'Крысиная напасть', icon:'🐀', npcName:'Староста Борис', area:'village',
+   desc:'Убейте 5 крыс в лесу — они портят урожай!', type:'kill', target:'rat', need:5,
+   rewardGold:40, rewardXp:30, rewardItem:null, followUp:'q_wolves'},
+  {id:'q_wolves', name:'Волчья стая', icon:'🐺', npcName:'Охотник Прохор', area:'forest',
+   desc:'Убейте 3 волков — они нападают на скот.', type:'kill', target:'wolf', need:3,
+   rewardGold:60, rewardXp:50, rewardItem:'iron_sword', followUp:'q_bandits'},
+  {id:'q_bandits', name:'Разбойники на тракте', icon:'🗡️', npcName:'Капитан стражи', area:'village',
+   desc:'Разбойники грабят путников. Убейте 4 разбойников.', type:'kill', target:'bandit', need:4,
+   rewardGold:90, rewardXp:80, rewardItem:'chain', followUp:'q_orcs'},
+  {id:'q_orcs', name:'Орочий набег', icon:'👹', npcName:'Комендант Игнат', area:'castle',
+   desc:'Орки собираются у болот. Уничтожьте 3 орков.', type:'kill', target:'orc', need:3,
+   rewardGold:120, rewardXp:100, rewardItem:'steel_sword', followUp:'q_knight'},
+  {id:'q_knight', name:'Тёмный рыцарь', icon:'🖤', npcName:'Маг Захар', area:'castle',
+   desc:'В подземелье засел Тёмный рыцарь. Убейте его!', type:'kill', target:'knight', need:1,
+   rewardGold:200, rewardXp:150, rewardItem:'plate', followUp:'q_dragon'},
+  {id:'q_dragon', name:'Виверна ужаса', icon:'🐉', npcName:'Король', area:'castle',
+   desc:'Виверна терроризирует пустыню. Сразите её!', type:'kill', target:'dragon', need:1,
+   rewardGold:500, rewardXp:300, rewardItem:'hero_blade', followUp:null},
+  {id:'q_spider', name:'Паучье логово', icon:'🕷️', npcName:'Травница Глафира', area:'village',
+   desc:'Пауки заполонили болота. Убейте 4 пауков.', type:'kill', target:'spider', need:4,
+   rewardGold:55, rewardXp:45, rewardItem:'potion', followUp:null},
+  {id:'q_skeletons', name:'Беспокойные мертвецы', icon:'💀', npcName:'Монах Лука', area:'castle',
+   desc:'Скелеты восстали в подземелье. Упокойте 5 скелетов.', type:'kill', target:'skeleton', need:5,
+   rewardGold:80, rewardXp:70, rewardItem:null, followUp:null},
+];
 
 // ===== ENEMY TEMPLATES =====
 const ENEMIES = {
@@ -377,6 +437,10 @@ function generateSlave(traderType) {
   const traits = isFemale ? TRAITS_F : TRAITS_M;
   const backstories = isFemale ? BACKSTORIES_F : BACKSTORIES_M;
 
+  // Random race
+  const raceId = RACE_IDS[Math.floor(rr() * RACE_IDS.length)];
+  const race = RACES[raceId];
+
   const firstName = names[Math.floor(rr() * names.length)];
   const lastName = surnames[Math.floor(rr() * surnames.length)];
   const fullName = `${firstName} ${lastName}`;
@@ -436,7 +500,7 @@ function generateSlave(traderType) {
 
   // Appearance
   const hairColor = HAIR_COLORS[Math.floor(rr() * HAIR_COLORS.length)];
-  const skinColor = SKIN_COLORS[Math.floor(rr() * SKIN_COLORS.length)];
+  const skinColor = race.skinRange[Math.floor(rr() * race.skinRange.length)];
   const bodyColor = isFemale
     ? BODY_COLORS_F[Math.floor(rr() * BODY_COLORS_F.length)]
     : BODY_COLORS_M[Math.floor(rr() * BODY_COLORS_M.length)];
@@ -459,10 +523,11 @@ function generateSlave(traderType) {
     gender: isFemale ? 'f' : 'm',
     genderIcon,
     age, trait1, trait2, backstory,
-    str: baseStr + (b1.str||0) + (b2.str||0),
-    agi: baseAgi,
-    vit: baseVit,
-    chr: baseChr + (b1.chr||0) + (b2.chr||0),
+    race: raceId, raceName: race.name, raceIcon: race.icon,
+    str: baseStr + (b1.str||0) + (b2.str||0) + (race.bonusStr||0),
+    agi: baseAgi + (race.bonusAgi||0),
+    vit: baseVit + (race.bonusVit||0),
+    chr: baseChr + (b1.chr||0) + (b2.chr||0) + (race.bonusChr||0),
     skill: primarySkill,
     skillLevel, starStr,
     isFighter, isHealer, isRanged,
@@ -478,7 +543,7 @@ function generateSlave(traderType) {
       : (isHealer ? '💊' : primarySkill.icon),
     roleDesc,
     hairColor, skinColor, bodyColor, bustSize,
-    desc: `${genderIcon} ${age} лет • ${trait1}, ${trait2}`,
+    desc: `${genderIcon} ${race.icon}${race.name} • ${age} лет • ${trait1}, ${trait2}`,
     assignedTo: null, // property uid or null
   };
 }
@@ -546,6 +611,11 @@ let terrainTrees = [], terrainRocks = [], terrainWater = [], terrainPaths = [];
 let curArea = 'village', overlayOpen = false, nearInteract = null;
 let atkCooldown = 0, dashCooldown = 0, dashTimer = 0, dashDx = 0, dashDy = 0;
 let dayTimer = 0, lastTime = 0, shopTab = 'buy', gameStarted = false;
+// Ambient VFX
+let ambientParticles = [], ambientTimer = 0;
+let screenShakeX = 0, screenShakeY = 0, screenShakeDur = 0;
+let weatherDrops = [], weatherTimer = 0;
+let dayNightCycle = 0; // 0..1 full cycle
 let respawnTimers = {};
 
 // ===== INIT GAME STATE =====
@@ -565,6 +635,8 @@ function initGame() {
     slaves: [], properties: [], running: false, invincible: 0,
     facing: 0, atkAnim: 0,
     kills: 0, day: 1,
+    quests: [], questsDone: [], questKills: {},
+    race: 'human',
     bodyColor: '#5a5a8a',
     headColor: '#e0b888',
     hairColor: '#4a3020',
@@ -594,6 +666,7 @@ function loadArea(areaId) {
   document.getElementById('hud-loc').textContent = A.name;
   enemies = []; npcs = []; buildings = []; portals = []; itemsOnGround = [];
   terrainTrees = []; terrainRocks = []; terrainWater = []; terrainPaths = [];
+  ambientParticles = []; weatherDrops = [];
   respawnTimers = {};
   const aw = A.w * TW, ah = A.h * TH;
 
@@ -615,6 +688,10 @@ function loadArea(areaId) {
       {x:870, y:310, r:11, name:'Работорговец', color:'#5a3020', dialog:'slave', traderId:'village_trader'},
       {x:745, y:560, r:11, name:'Кузнец', color:'#705030', dialog:'trade'},
       {x:480, y:530, r:11, name:'Староста', color:'#6a6040', dialog:'property'},
+      // Quest NPCs
+      {x:400, y:400, r:11, name:'Староста Борис', color:'#7a7050', dialog:'quest', questId:'q_rats', skinColor:'#d4a878', hairColor:'#6a4830', gender:'m'},
+      {x:180, y:350, r:11, name:'Капитан стражи', color:'#5a5a70', dialog:'quest', questId:'q_bandits', skinColor:'#e0b888', hairColor:'#2a1a0a', gender:'m'},
+      {x:550, y:680, r:11, name:'Травница Глафира', color:'#4a7050', dialog:'quest', questId:'q_spider', skinColor:'#f0dcc0', hairColor:'#8a2020', gender:'f'},
     );
     // Portals
     portals.push(
@@ -637,6 +714,10 @@ function loadArea(areaId) {
     for (let i = 0; i < 4; i++) spawnEnemy('goblin', 500+rr()*1800, 400+rr()*1400);
     for (let i = 0; i < 3; i++) spawnEnemy('bear', 600+rr()*1500, 400+rr()*1200);
     for (let i = 0; i < 2; i++) spawnEnemy('orc', 800+rr()*1200, 500+rr()*1000);
+    // Quest NPC in forest
+    npcs.push(
+      {x:150, y:500, r:11, name:'Охотник Прохор', color:'#5a7040', dialog:'quest', questId:'q_wolves', skinColor:'#c09060', hairColor:'#4a3020', gender:'m'},
+    );
     for (let i = 0; i < 180; i++) terrainTrees.push({x:rr()*aw, y:rr()*ah, s:12+rr()*16, type:rr()>.3?'pine':'oak'});
     for (let i = 0; i < 25; i++) terrainRocks.push({x:rr()*aw, y:rr()*ah, s:5+rr()*10});
     portals.push(
@@ -656,6 +737,11 @@ function loadArea(areaId) {
       {x:650, y:370, r:11, name:'Трактирщик', color:'#705848', dialog:'tavern'},
       {x:430, y:580, r:11, name:'Работорговец', color:'#504030', dialog:'slave', traderId:'castle_trader'},
       {x:280, y:500, r:11, name:'Управляющий', color:'#6a6080', dialog:'property'},
+      // Quest NPCs
+      {x:550, y:500, r:11, name:'Комендант Игнат', color:'#606080', dialog:'quest', questId:'q_orcs', skinColor:'#d4a878', hairColor:'#1a1a1a', gender:'m'},
+      {x:750, y:280, r:11, name:'Маг Захар', color:'#5a4080', dialog:'quest', questId:'q_knight', skinColor:'#f0dcc0', hairColor:'#c4a060', gender:'m'},
+      {x:200, y:350, r:11, name:'Король', color:'#8a7030', dialog:'quest', questId:'q_dragon', skinColor:'#e0b888', hairColor:'#6a4830', gender:'m'},
+      {x:500, y:350, r:11, name:'Монах Лука', color:'#6a6050', dialog:'quest', questId:'q_skeletons', skinColor:'#e8c8a0', hairColor:'#1a1a1a', gender:'m'},
     );
     for (let i = 0; i < 3; i++) spawnEnemy('knight', 700+rr()*500, 200+rr()*600);
     for (let i = 0; i < 10; i++) terrainTrees.push({x:rr()*aw, y:rr()*ah, s:10+rr()*8, type:'oak'});
@@ -772,7 +858,99 @@ function blendColor(hex1, hex2, t) {
 }
 
 // ── Shared realistic character drawing helper ──
-function drawRealisticHead(ctx, cx, cy, r, skinColor, hairColor, gender, hasEyelashes) {
+
+// Draw anatomical leg: thigh (wide) → knee (narrow) → calf (wider) → ankle (narrow)
+function drawAnatomicalLeg(ctx, x, topY, legH, legW, animOff, flip) {
+  const thighW = legW * 1.3;
+  const kneeW = legW * 0.7;
+  const calfW = legW * 1.05;
+  const ankleW = legW * 0.5;
+  const kneeY = topY + legH * 0.45;
+  const calfY = topY + legH * 0.7;
+  const bottomY = topY + legH;
+  const dir = flip ? -1 : 1;
+  const cx0 = x + dir * legW * 0.3;
+
+  const legGrad = ctx.createLinearGradient(cx0, topY + animOff, cx0, bottomY + animOff);
+  legGrad.addColorStop(0, '#4a3520');
+  legGrad.addColorStop(0.45, '#3a2a18');
+  legGrad.addColorStop(0.7, '#3f2e1c');
+  legGrad.addColorStop(1, '#2a1a0a');
+  ctx.fillStyle = legGrad;
+
+  ctx.beginPath();
+  // Outer edge: thigh → knee (inward) → calf (outward) → ankle
+  ctx.moveTo(cx0 - thighW * 0.5, topY + animOff);
+  ctx.bezierCurveTo(
+    cx0 - thighW * 0.6, topY + legH * 0.2 + animOff,
+    cx0 - kneeW * 0.6, kneeY - legH * 0.08 + animOff,
+    cx0 - kneeW * 0.5, kneeY + animOff
+  );
+  ctx.bezierCurveTo(
+    cx0 - calfW * 0.55, kneeY + legH * 0.08 + animOff,
+    cx0 - calfW * 0.6, calfY - legH * 0.05 + animOff,
+    cx0 - calfW * 0.5, calfY + animOff
+  );
+  ctx.bezierCurveTo(
+    cx0 - ankleW * 0.6, calfY + legH * 0.1 + animOff,
+    cx0 - ankleW * 0.5, bottomY - 1 + animOff,
+    cx0 - ankleW * 0.5, bottomY + animOff
+  );
+  // Inner edge (mirrored, going up)
+  ctx.lineTo(cx0 + ankleW * 0.5, bottomY + animOff);
+  ctx.bezierCurveTo(
+    cx0 + ankleW * 0.5, bottomY - 1 + animOff,
+    cx0 + ankleW * 0.6, calfY + legH * 0.1 + animOff,
+    cx0 + calfW * 0.35, calfY + animOff
+  );
+  ctx.bezierCurveTo(
+    cx0 + calfW * 0.4, calfY - legH * 0.05 + animOff,
+    cx0 + kneeW * 0.45, kneeY + legH * 0.08 + animOff,
+    cx0 + kneeW * 0.4, kneeY + animOff
+  );
+  ctx.bezierCurveTo(
+    cx0 + kneeW * 0.45, kneeY - legH * 0.08 + animOff,
+    cx0 + thighW * 0.45, topY + legH * 0.2 + animOff,
+    cx0 + thighW * 0.38, topY + animOff
+  );
+  ctx.closePath();
+  ctx.fill();
+
+  // Knee highlight circle
+  ctx.fillStyle = 'rgba(255,255,255,.04)';
+  ctx.beginPath();
+  ctx.ellipse(cx0, kneeY + animOff, kneeW * 0.35, legH * 0.06, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Boot
+  ctx.fillStyle = '#2a1a0a';
+  ctx.beginPath();
+  ctx.ellipse(cx0, bottomY + animOff + 1.5, ankleW * 0.8 + 1, 2.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+// Draw a mini anatomical leg (for small characters like followers/previews)
+function drawMiniLeg(ctx, x, topY, legH, legW, animOff) {
+  const lg = ctx.createLinearGradient(x, topY + animOff, x, topY + legH + animOff);
+  lg.addColorStop(0, '#4a3520');
+  lg.addColorStop(0.5, '#3a2a18');
+  lg.addColorStop(1, '#2a1a0a');
+  ctx.fillStyle = lg;
+  ctx.beginPath();
+  ctx.moveTo(x - legW * 0.5, topY + animOff);
+  ctx.bezierCurveTo(x - legW * 0.65, topY + legH * 0.25 + animOff, x - legW * 0.35, topY + legH * 0.45 + animOff, x - legW * 0.3, topY + legH * 0.5 + animOff);
+  ctx.bezierCurveTo(x - legW * 0.55, topY + legH * 0.6 + animOff, x - legW * 0.5, topY + legH * 0.85 + animOff, x - legW * 0.3, topY + legH + animOff);
+  ctx.lineTo(x + legW * 0.3, topY + legH + animOff);
+  ctx.bezierCurveTo(x + legW * 0.35, topY + legH * 0.85 + animOff, x + legW * 0.4, topY + legH * 0.6 + animOff, x + legW * 0.25, topY + legH * 0.5 + animOff);
+  ctx.bezierCurveTo(x + legW * 0.3, topY + legH * 0.45 + animOff, x + legW * 0.5, topY + legH * 0.25 + animOff, x + legW * 0.4, topY + animOff);
+  ctx.closePath();
+  ctx.fill();
+  // Boot
+  ctx.fillStyle = '#2a1a0a';
+  ctx.beginPath(); ctx.ellipse(x, topY + legH + animOff + 1, legW * 0.45, 1.5, 0, 0, Math.PI * 2); ctx.fill();
+}
+
+function drawRealisticHead(ctx, cx, cy, r, skinColor, hairColor, gender, hasEyelashes, earType) {
   const isFemale = gender === 'f';
   // Head with gradient
   const hg = ctx.createRadialGradient(cx - r*.25, cy - r*.2, r*.1, cx, cy, r);
@@ -781,10 +959,26 @@ function drawRealisticHead(ctx, cx, cy, r, skinColor, hairColor, gender, hasEyel
   hg.addColorStop(1, darkenColor(skinColor, 20));
   ctx.fillStyle = hg;
   ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.fill();
-  // Ears
-  ctx.fillStyle = darkenColor(skinColor, 8);
-  ctx.beginPath(); ctx.ellipse(cx - r*.95, cy, r*.14, r*.24, 0, 0, Math.PI*2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(cx + r*.95, cy, r*.14, r*.24, 0, 0, Math.PI*2); ctx.fill();
+  // Ears (race-dependent)
+  if (earType === 'pointed') {
+    // Pointed elf/orc ears
+    ctx.fillStyle = darkenColor(skinColor, 8);
+    ctx.beginPath();
+    ctx.moveTo(cx - r * .9, cy - r * .1);
+    ctx.quadraticCurveTo(cx - r * 1.5, cy - r * .7, cx - r * 1.3, cy - r * .9);
+    ctx.quadraticCurveTo(cx - r * 1.1, cy - r * .4, cx - r * .85, cy + r * .15);
+    ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(cx + r * .9, cy - r * .1);
+    ctx.quadraticCurveTo(cx + r * 1.5, cy - r * .7, cx + r * 1.3, cy - r * .9);
+    ctx.quadraticCurveTo(cx + r * 1.1, cy - r * .4, cx + r * .85, cy + r * .15);
+    ctx.closePath(); ctx.fill();
+  } else {
+    // Normal round ears
+    ctx.fillStyle = darkenColor(skinColor, 8);
+    ctx.beginPath(); ctx.ellipse(cx - r*.95, cy, r*.14, r*.24, 0, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(cx + r*.95, cy, r*.14, r*.24, 0, 0, Math.PI*2); ctx.fill();
+  }
 }
 
 function drawRealisticFace(ctx, cx, cy, r, isFemale, irisColor) {
@@ -904,14 +1098,9 @@ function drawSlavePreview(canvas, slave) {
   ctx.fillStyle = sg;
   ctx.beginPath(); ctx.ellipse(cx0, feetY + 1, r * .8, 3, 0, 0, Math.PI * 2); ctx.fill();
 
-  // Legs
-  ctx.fillStyle = '#3a2a18';
-  ctx.fillRect(cx0 - 3, feetY - legLen, 2.2, legLen);
-  ctx.fillRect(cx0 + .8, feetY - legLen, 2.2, legLen);
-  // Boots
-  ctx.fillStyle = '#2a1a0a';
-  ctx.fillRect(cx0 - 3.5, feetY - 2, 3.2, 2.5);
-  ctx.fillRect(cx0 + .3, feetY - 2, 3.2, 2.5);
+  // Legs (anatomical mini)
+  drawMiniLeg(ctx, cx0 - 1.5, feetY - legLen, legLen, 2.8, 0);
+  drawMiniLeg(ctx, cx0 + 1.5, feetY - legLen, legLen, 2.8, 0);
 
   const bodyY = feetY - legLen - bodyH2 * .5;
   const headY = bodyY - bodyH2 * .5 - headR * .5;
@@ -959,7 +1148,8 @@ function drawSlavePreview(canvas, slave) {
   ctx.fillRect(cx0 - 1.2, headY + headR * .4, 2.4, 4);
 
   // Head, hair, face
-  drawRealisticHead(ctx, cx0, headY, headR, skinCol, hairCol, slave.gender || 'm');
+  const slaveRace = RACES[slave.race] || RACES.human;
+  drawRealisticHead(ctx, cx0, headY, headR, skinCol, hairCol, slave.gender || 'm', false, slaveRace.earType);
   drawRealisticHair(ctx, cx0, headY, headR, hairCol, isFemale);
   drawRealisticFace(ctx, cx0, headY, headR, isFemale, '#5a7a50');
 }
@@ -1070,6 +1260,28 @@ function drawBuilding(b) {
   X.font = 'bold 12px Segoe UI'; X.textAlign = 'center';
   X.fillStyle = '#000'; X.fillText(b.name, b.x + b.w / 2 + 1, b.y - 33);
   X.fillStyle = '#d4a017'; X.fillText(b.name, b.x + b.w / 2, b.y - 34);
+  // Warm glow from windows (soft light circle)
+  const glowPulse = .6 + Math.sin(performance.now() * .002 + b.x) * .15;
+  X.globalAlpha = glowPulse * .2;
+  const wg = X.createRadialGradient(b.x + b.w/2, b.y + b.h/2, 10, b.x + b.w/2, b.y + b.h/2, b.w * 1.2);
+  wg.addColorStop(0, 'rgba(255,180,60,.3)');
+  wg.addColorStop(.5, 'rgba(255,140,40,.08)');
+  wg.addColorStop(1, 'rgba(0,0,0,0)');
+  X.fillStyle = wg;
+  X.beginPath(); X.arc(b.x + b.w/2, b.y + b.h/2, b.w * 1.2, 0, Math.PI*2); X.fill();
+  X.globalAlpha = 1;
+  // Torch flame next to door
+  const torchX = b.x + b.w/2 - 16, torchY = b.y + b.h - 8;
+  const flameH = 5 + Math.sin(performance.now()*.01 + b.y) * 2;
+  X.fillStyle = '#8a6020';
+  X.fillRect(torchX, torchY - 12, 2, 12); // torch stick
+  // Flame
+  const fg = X.createRadialGradient(torchX + 1, torchY - 12 - flameH/2, 0, torchX + 1, torchY - 12 - flameH/2, flameH + 2);
+  fg.addColorStop(0, 'rgba(255,220,80,.9)');
+  fg.addColorStop(.4, 'rgba(255,140,30,.5)');
+  fg.addColorStop(1, 'rgba(255,60,10,0)');
+  X.fillStyle = fg;
+  X.beginPath(); X.arc(torchX + 1, torchY - 12 - flameH/2, flameH + 2, 0, Math.PI*2); X.fill();
 }
 
 function drawPortal(p) {
@@ -1108,15 +1320,10 @@ function drawNPC(n) {
   X.fillStyle = 'rgba(0,0,0,.25)';
   X.beginPath(); X.ellipse(nx, ny + r + 3, r * .9, r * .22, 0, 0, Math.PI * 2); X.fill();
 
-  // Legs
+  // Legs (anatomical)
   const legW = 2.5, legH = 10;
-  X.fillStyle = '#3a2a18';
-  X.fillRect(nx - legW * 1.2, ny + r - 2, legW, legH);
-  X.fillRect(nx + legW * .2, ny + r - 2, legW, legH);
-  // Boots
-  X.fillStyle = '#2a1a0a';
-  X.fillRect(nx - legW * 1.2 - 1, ny + r + legH - 3, legW + 2, 3);
-  X.fillRect(nx + legW * .2 - 1, ny + r + legH - 3, legW + 2, 3);
+  drawMiniLeg(X, nx - legW * 0.6, ny + r - 2, legH, legW * 1.3, 0);
+  drawMiniLeg(X, nx + legW * 0.6, ny + r - 2, legH, legW * 1.3, 0);
 
   // Neck
   X.fillStyle = skinCol;
@@ -1163,14 +1370,29 @@ function drawNPC(n) {
   X.restore();
 
   // Head, hair, face using shared helpers
-  drawRealisticHead(X, nx, headY, headR, skinCol, hairCol, npcGender);
+  drawRealisticHead(X, nx, headY, headR, skinCol, hairCol, npcGender, false, n.earType);
   drawRealisticHair(X, nx, headY, headR, hairCol, isFemale);
   drawRealisticFace(X, nx, headY, headR, isFemale, '#5a7a50');
 
   // Name
   X.font = 'bold 11px Segoe UI'; X.textAlign = 'center';
   X.fillStyle = '#000'; X.fillText(n.name, nx + 1, headY - headR - 5);
-  X.fillStyle = '#d4a017'; X.fillText(n.name, nx, headY - headR - 6);
+  const nameCol = n.dialog === 'quest' ? '#40c0ff' : '#d4a017';
+  X.fillStyle = nameCol; X.fillText(n.name, nx, headY - headR - 6);
+  // Quest marker
+  if (n.dialog === 'quest') {
+    const q = QUESTS.find(qq => qq.id === n.questId);
+    if (q) {
+      const isActive = G.quests && G.quests.includes(q.id);
+      const isDone = G.questsDone && G.questsDone.includes(q.id);
+      if (!isDone) {
+        const pulse = Math.sin(performance.now() * .004) * .3 + .7;
+        X.font = 'bold 16px Segoe UI';
+        X.fillStyle = isActive ? `rgba(80,255,80,${pulse})` : `rgba(255,220,40,${pulse})`;
+        X.fillText(isActive ? '✓' : '❗', nx, headY - headR - 18);
+      }
+    }
+  }
   // Interact hint
   const dist = Math.hypot(nx - G.x, ny - G.y);
   if (dist < 60) {
@@ -1204,14 +1426,10 @@ function drawEnemy(e) {
     const hairCol = e.hairColor || '#3a2a20';
     const eyeCol = e.state === 'chase' ? '#cc2020' : '#5a4030';
 
-    // Legs
+    // Legs (anatomical)
     const legW = 2.5, legH = 10;
-    X.fillStyle = '#3a2a18';
-    X.fillRect(ex - legW * 1.2, ey + r - 2 + legAnim, legW, legH);
-    X.fillRect(ex + legW * .2, ey + r - 2 - legAnim, legW, legH);
-    X.fillStyle = '#2a1a0a';
-    X.fillRect(ex - legW * 1.2 - 1, ey + r + legH - 3 + legAnim, legW + 2, 3);
-    X.fillRect(ex + legW * .2 - 1, ey + r + legH - 3 - legAnim, legW + 2, 3);
+    drawMiniLeg(X, ex - legW * 0.6, ey + r - 2, legH, legW * 1.3, legAnim);
+    drawMiniLeg(X, ex + legW * 0.6, ey + r - 2, legH, legW * 1.3, -legAnim);
 
     // Body with gradient
     const bg = X.createRadialGradient(ex - r*.2, ey - r*.1 + bob, 0, ex, ey + bob, r);
@@ -1278,8 +1496,8 @@ function drawEnemy(e) {
     // ── Monster enemy (non-human): menacing creature ──
     // Legs
     X.fillStyle = darkenColor(e.color1, 20);
-    X.fillRect(ex - r * .4, ey + r - 2 + legAnim, 3.5, 6);
-    X.fillRect(ex + r * .15, ey + r - 2 - legAnim, 3.5, 6);
+    drawMiniLeg(X, ex - r * .2, ey + r - 2, 6, 4, legAnim);
+    drawMiniLeg(X, ex + r * .2, ey + r - 2, 6, 4, -legAnim);
 
     // Body with gradient
     const mbg = X.createRadialGradient(ex - r*.2, ey - r*.15 + bob, r*.1, ex, ey + bob, r);
@@ -1377,20 +1595,11 @@ function drawPlayer() {
 
   if (G.invincible > 0 && Math.floor(G.invincible / 4) % 2 === 0) X.globalAlpha = .4;
 
-  // Legs with gradient
+  // Legs with anatomical shape (thigh → knee → calf)
   const legW = 2.2 + fF * 1.2 + fM * 0.8;
   const legH = 14 * fLegs;
-  const legGrad = X.createLinearGradient(px, py + 6, px, py + 6 + legH);
-  legGrad.addColorStop(0, '#4a3520');
-  legGrad.addColorStop(0.7, '#3a2a18');
-  legGrad.addColorStop(1, '#2a1a0a');
-  X.fillStyle = legGrad;
-  X.fillRect(px - legW * 1.3, py + 5 + legAnim, legW, legH);
-  X.fillRect(px + legW * 0.3, py + 5 - legAnim, legW, legH);
-  // Boots
-  X.fillStyle = '#2a1a0a';
-  X.fillRect(px - legW * 1.3 - 1, py + 4 + legH + legAnim, legW + 2, 4);
-  X.fillRect(px + legW * 0.3 - 1, py + 4 + legH - legAnim, legW + 2, 4);
+  drawAnatomicalLeg(X, px - legW * 0.8, py + 5, legH, legW, legAnim, true);
+  drawAnatomicalLeg(X, px + legW * 0.8, py + 5, legH, legW, -legAnim, false);
 
   // Neck
   X.fillStyle = G.headColor;
@@ -1506,65 +1715,198 @@ function drawPlayer() {
   X.restore();
 
   // Head, hair, face using shared helpers
-  drawRealisticHead(X, px, headY, headR, G.headColor, G.hairColor, G.gender);
+  const playerRace = RACES[G.race] || RACES.human;
+  drawRealisticHead(X, px, headY, headR, G.headColor, G.hairColor, G.gender, false, playerRace.earType);
   drawRealisticHair(X, px, headY, headR, G.hairColor, isFemale);
   drawRealisticFace(X, px, headY, headR, isFemale, '#4a6a40');
 
-  // Weapon
+  // Weapon (class-specific rendering)
   if (G.weapon) {
+    const wtype = G.weapon.wtype || 'sword';
     if (G.atkAnim > 0) {
       const swingAngle = G.facing + Math.sin(G.atkAnim * Math.PI) * 1.4 - .7;
       const wLen = 24 + (G.weapon.atk || 0) * .5;
       const wx = px + Math.cos(swingAngle) * wLen;
       const wy = py + Math.sin(swingAngle) * wLen + bob;
-      // Blade
-      X.strokeStyle = '#c0c0c0'; X.lineWidth = 3; X.lineCap = 'round';
-      X.beginPath();
-      X.moveTo(px + Math.cos(swingAngle) * 8, py + Math.sin(swingAngle) * 8 + bob);
-      X.lineTo(wx, wy);
-      X.stroke();
-      // Blade edge highlight
-      X.strokeStyle = 'rgba(255,255,255,.5)'; X.lineWidth = 1;
-      X.beginPath();
-      X.moveTo(px + Math.cos(swingAngle) * 10, py + Math.sin(swingAngle) * 10 + bob);
-      X.lineTo(wx, wy);
-      X.stroke();
-      // Blade glow
-      X.strokeStyle = 'rgba(255,255,255,.3)'; X.lineWidth = 6;
-      X.beginPath(); X.moveTo(px + Math.cos(swingAngle) * 16, py + Math.sin(swingAngle) * 16 + bob);
-      X.lineTo(wx, wy); X.stroke();
-      // Trail arc
+      const bx = px + Math.cos(swingAngle) * 8;
+      const by = py + Math.sin(swingAngle) * 8 + bob;
+
+      if (wtype === 'bow') {
+        // Bow attack - draw arrow flying
+        X.strokeStyle = '#8a7050'; X.lineWidth = 2; X.lineCap = 'round';
+        X.beginPath(); X.arc(bx, by, 12, swingAngle - .6, swingAngle + .6); X.stroke();
+        X.strokeStyle = '#bba880'; X.lineWidth = .7;
+        X.beginPath();
+        X.moveTo(bx + Math.cos(swingAngle - .6)*12, by + Math.sin(swingAngle - .6)*12);
+        X.lineTo(bx + Math.cos(swingAngle + .6)*12, by + Math.sin(swingAngle + .6)*12); X.stroke();
+        // Arrow
+        X.strokeStyle = '#c0c0c0'; X.lineWidth = 1.5;
+        X.beginPath(); X.moveTo(bx, by); X.lineTo(wx, wy); X.stroke();
+        // Arrowhead
+        const ah1 = swingAngle + 2.7, ah2 = swingAngle - 2.7;
+        X.fillStyle = '#888';
+        X.beginPath(); X.moveTo(wx, wy);
+        X.lineTo(wx + Math.cos(ah1)*4, wy + Math.sin(ah1)*4);
+        X.lineTo(wx + Math.cos(ah2)*4, wy + Math.sin(ah2)*4);
+        X.closePath(); X.fill();
+      } else if (wtype === 'dagger') {
+        // Fast dagger stab
+        X.strokeStyle = '#d0d0d0'; X.lineWidth = 2; X.lineCap = 'round';
+        X.beginPath(); X.moveTo(bx, by); X.lineTo(wx * .7 + bx * .3, wy * .7 + by * .3); X.stroke();
+        // Blade glow
+        X.strokeStyle = 'rgba(255,255,255,.5)'; X.lineWidth = 4;
+        X.beginPath(); X.moveTo(bx, by); X.lineTo(wx * .6 + bx * .4, wy * .6 + by * .4); X.stroke();
+        // Second dagger
+        const sa2 = swingAngle + 1.2;
+        const wx2 = px + Math.cos(sa2) * wLen * .7;
+        const wy2 = py + Math.sin(sa2) * wLen * .7 + bob;
+        X.strokeStyle = '#d0d0d0'; X.lineWidth = 2;
+        X.beginPath(); X.moveTo(bx, by); X.lineTo(wx2, wy2); X.stroke();
+      } else if (wtype === 'mace') {
+        // Mace swing with heavy head
+        X.strokeStyle = '#8a7050'; X.lineWidth = 3;
+        X.beginPath(); X.moveTo(bx, by); X.lineTo(wx, wy); X.stroke();
+        // Mace head (spiked ball)
+        X.fillStyle = '#777';
+        X.beginPath(); X.arc(wx, wy, 5, 0, Math.PI*2); X.fill();
+        X.fillStyle = '#999';
+        X.beginPath(); X.arc(wx - 1, wy - 1, 3, 0, Math.PI*2); X.fill();
+        // Spikes
+        for (let sp = 0; sp < 4; sp++) {
+          const sa = sp * Math.PI * .5 + performance.now() * .002;
+          X.fillStyle = '#666';
+          X.beginPath(); X.arc(wx + Math.cos(sa)*5, wy + Math.sin(sa)*5, 1.5, 0, Math.PI*2); X.fill();
+        }
+      } else if (wtype === 'axe') {
+        // Axe swing
+        X.strokeStyle = '#6a4a25'; X.lineWidth = 3; X.lineCap = 'round';
+        X.beginPath(); X.moveTo(bx, by); X.lineTo(wx, wy); X.stroke();
+        // Axe head
+        const perpA = swingAngle + Math.PI * .5;
+        X.fillStyle = '#888';
+        X.beginPath();
+        X.moveTo(wx + Math.cos(swingAngle)*2, wy + Math.sin(swingAngle)*2);
+        X.lineTo(wx + Math.cos(perpA)*7, wy + Math.sin(perpA)*7);
+        X.lineTo(wx - Math.cos(perpA)*7, wy - Math.sin(perpA)*7);
+        X.closePath(); X.fill();
+        X.fillStyle = '#aaa';
+        X.beginPath();
+        X.moveTo(wx + Math.cos(swingAngle)*2, wy + Math.sin(swingAngle)*2);
+        X.lineTo(wx + Math.cos(perpA)*5, wy + Math.sin(perpA)*5);
+        X.lineTo(wx - Math.cos(perpA)*3, wy - Math.sin(perpA)*3);
+        X.closePath(); X.fill();
+      } else if (wtype === 'staff') {
+        // Staff with magic orb
+        X.strokeStyle = '#6a4a25'; X.lineWidth = 3; X.lineCap = 'round';
+        X.beginPath(); X.moveTo(bx, by); X.lineTo(wx, wy); X.stroke();
+        // Magic orb at tip
+        const orbPulse = Math.sin(performance.now() * .006) * .3 + .7;
+        const og = X.createRadialGradient(wx, wy, 0, wx, wy, 6);
+        og.addColorStop(0, `rgba(100,180,255,${orbPulse})`);
+        og.addColorStop(.5, `rgba(60,120,200,${orbPulse * .6})`);
+        og.addColorStop(1, 'rgba(30,60,150,0)');
+        X.fillStyle = og;
+        X.beginPath(); X.arc(wx, wy, 8, 0, Math.PI*2); X.fill();
+        X.fillStyle = `rgba(200,230,255,${orbPulse})`;
+        X.beginPath(); X.arc(wx, wy, 3, 0, Math.PI*2); X.fill();
+      } else if (wtype === 'scythe') {
+        // Dark scythe
+        X.strokeStyle = '#4a3020'; X.lineWidth = 3; X.lineCap = 'round';
+        X.beginPath(); X.moveTo(bx, by); X.lineTo(wx, wy); X.stroke();
+        // Curved blade
+        X.strokeStyle = '#888'; X.lineWidth = 2;
+        X.beginPath();
+        const bladeStart = swingAngle - .3;
+        X.arc(wx, wy, 10, bladeStart - 1.2, bladeStart + .3);
+        X.stroke();
+        // Dark aura
+        const dg = X.createRadialGradient(wx, wy, 0, wx, wy, 12);
+        dg.addColorStop(0, 'rgba(80,0,80,.3)');
+        dg.addColorStop(1, 'rgba(80,0,80,0)');
+        X.fillStyle = dg;
+        X.beginPath(); X.arc(wx, wy, 12, 0, Math.PI*2); X.fill();
+      } else {
+        // Default sword
+        X.strokeStyle = '#c0c0c0'; X.lineWidth = 3; X.lineCap = 'round';
+        X.beginPath(); X.moveTo(bx, by); X.lineTo(wx, wy); X.stroke();
+        X.strokeStyle = 'rgba(255,255,255,.5)'; X.lineWidth = 1;
+        X.beginPath(); X.moveTo(bx + Math.cos(swingAngle)*2, by + Math.sin(swingAngle)*2);
+        X.lineTo(wx, wy); X.stroke();
+        // Blade glow
+        X.strokeStyle = 'rgba(255,255,255,.3)'; X.lineWidth = 6;
+        X.beginPath(); X.moveTo(bx + Math.cos(swingAngle)*8, by + Math.sin(swingAngle)*8);
+        X.lineTo(wx, wy); X.stroke();
+      }
+      // Trail arc (all weapons)
       for (let i = 0; i < 5; i++) {
         const ta = swingAngle - i * .25;
         X.fillStyle = `rgba(255,255,255,${.18 - i * .035})`;
         X.beginPath(); X.arc(px + Math.cos(ta) * wLen, py + Math.sin(ta) * wLen + bob, 3 - i * .5, 0, Math.PI * 2); X.fill();
       }
     } else {
+      // Idle weapon rendering
       const wLen = 18 + (G.weapon.atk || 0) * .3;
       const wx = px + Math.cos(G.facing) * wLen;
       const wy = py + Math.sin(G.facing) * wLen + bob;
-      // Blade
-      X.strokeStyle = '#999'; X.lineWidth = 2.5; X.lineCap = 'round';
-      X.beginPath();
-      X.moveTo(px + Math.cos(G.facing) * 8, py + Math.sin(G.facing) * 8 + bob);
-      X.lineTo(wx, wy);
-      X.stroke();
-      // Blade edge
-      X.strokeStyle = 'rgba(255,255,255,.2)'; X.lineWidth = 1;
-      X.beginPath();
-      X.moveTo(px + Math.cos(G.facing) * 10, py + Math.sin(G.facing) * 10 + bob);
-      X.lineTo(wx, wy);
-      X.stroke();
+      const bx = px + Math.cos(G.facing) * 8;
+      const by = py + Math.sin(G.facing) * 8 + bob;
+
+      if (wtype === 'bow') {
+        X.strokeStyle = '#8a7050'; X.lineWidth = 2; X.lineCap = 'round';
+        X.beginPath(); X.arc(bx, by, 10, G.facing - .7, G.facing + .7); X.stroke();
+        X.strokeStyle = '#bba880'; X.lineWidth = .6;
+        X.beginPath();
+        X.moveTo(bx + Math.cos(G.facing - .7)*10, by + Math.sin(G.facing - .7)*10);
+        X.lineTo(bx + Math.cos(G.facing + .7)*10, by + Math.sin(G.facing + .7)*10); X.stroke();
+      } else if (wtype === 'dagger') {
+        X.strokeStyle = '#aaa'; X.lineWidth = 2; X.lineCap = 'round';
+        X.beginPath(); X.moveTo(bx, by); X.lineTo(bx + Math.cos(G.facing)*10, by + Math.sin(G.facing)*10 ); X.stroke();
+        X.fillStyle = '#5a3a1a';
+        X.beginPath(); X.arc(bx, by, 2, 0, Math.PI*2); X.fill();
+      } else if (wtype === 'mace') {
+        X.strokeStyle = '#7a5a30'; X.lineWidth = 2.5; X.lineCap = 'round';
+        X.beginPath(); X.moveTo(bx, by); X.lineTo(wx, wy); X.stroke();
+        X.fillStyle = '#777';
+        X.beginPath(); X.arc(wx, wy, 4, 0, Math.PI*2); X.fill();
+      } else if (wtype === 'axe') {
+        X.strokeStyle = '#6a4a25'; X.lineWidth = 2.5; X.lineCap = 'round';
+        X.beginPath(); X.moveTo(bx, by); X.lineTo(wx, wy); X.stroke();
+        const perpA = G.facing + Math.PI * .5;
+        X.fillStyle = '#888';
+        X.beginPath();
+        X.moveTo(wx, wy);
+        X.lineTo(wx + Math.cos(perpA)*5, wy + Math.sin(perpA)*5);
+        X.lineTo(wx - Math.cos(perpA)*5, wy - Math.sin(perpA)*5);
+        X.closePath(); X.fill();
+      } else if (wtype === 'staff') {
+        X.strokeStyle = '#6a4a25'; X.lineWidth = 2.5; X.lineCap = 'round';
+        X.beginPath(); X.moveTo(bx, by); X.lineTo(wx, wy); X.stroke();
+        const orbPulse = Math.sin(performance.now() * .004) * .2 + .5;
+        X.fillStyle = `rgba(80,160,255,${orbPulse})`;
+        X.beginPath(); X.arc(wx, wy, 3, 0, Math.PI*2); X.fill();
+      } else if (wtype === 'scythe') {
+        X.strokeStyle = '#4a3020'; X.lineWidth = 2.5; X.lineCap = 'round';
+        X.beginPath(); X.moveTo(bx, by); X.lineTo(wx, wy); X.stroke();
+        X.strokeStyle = '#888'; X.lineWidth = 1.5;
+        X.beginPath(); X.arc(wx, wy, 8, G.facing - 1.2, G.facing + .2); X.stroke();
+      } else {
+        // Default sword idle
+        X.strokeStyle = '#999'; X.lineWidth = 2.5; X.lineCap = 'round';
+        X.beginPath(); X.moveTo(bx, by); X.lineTo(wx, wy); X.stroke();
+        X.strokeStyle = 'rgba(255,255,255,.2)'; X.lineWidth = 1;
+        X.beginPath(); X.moveTo(bx + Math.cos(G.facing)*2, by + Math.sin(G.facing)*2);
+        X.lineTo(wx, wy); X.stroke();
+        // Guard
+        const gAngle = G.facing + Math.PI * .5;
+        X.strokeStyle = '#888'; X.lineWidth = 1.5;
+        X.beginPath();
+        X.moveTo(bx + Math.cos(G.facing)*1 + Math.cos(gAngle)*3, by + Math.sin(G.facing)*1 + Math.sin(gAngle)*3);
+        X.lineTo(bx + Math.cos(G.facing)*1 - Math.cos(gAngle)*3, by + Math.sin(G.facing)*1 - Math.sin(gAngle)*3);
+        X.stroke();
+      }
       // Handle
       X.fillStyle = '#5a3a1a';
-      X.beginPath(); X.arc(px + Math.cos(G.facing) * 8, py + Math.sin(G.facing) * 8 + bob, 3, 0, Math.PI * 2); X.fill();
-      // Guard
-      const gAngle = G.facing + Math.PI * .5;
-      X.strokeStyle = '#888'; X.lineWidth = 1.5;
-      X.beginPath();
-      X.moveTo(px + Math.cos(G.facing) * 9 + Math.cos(gAngle) * 3, py + Math.sin(G.facing) * 9 + Math.sin(gAngle) * 3 + bob);
-      X.lineTo(px + Math.cos(G.facing) * 9 - Math.cos(gAngle) * 3, py + Math.sin(G.facing) * 9 - Math.sin(gAngle) * 3 + bob);
-      X.stroke();
+      X.beginPath(); X.arc(bx, by, 3, 0, Math.PI * 2); X.fill();
     }
   }
 
@@ -1592,14 +1934,10 @@ function drawFollower(s, i) {
   X.fillStyle = 'rgba(0,0,0,.25)';
   X.beginPath(); X.ellipse(fx, fy + r + 2, r * .85, 2.5, 0, 0, Math.PI * 2); X.fill();
 
-  // Legs
-  X.fillStyle = '#3a2a18';
+  // Legs (anatomical mini)
   const legOff = Math.sin(performance.now() * .01 + i) * 2;
-  X.fillRect(fx - 3, fy + r - 2 + legOff, 2.2, 8);
-  X.fillRect(fx + .8, fy + r - 2 - legOff, 2.2, 8);
-  X.fillStyle = '#2a1a0a';
-  X.fillRect(fx - 3.5, fy + r + 5.5 + legOff, 3, 2);
-  X.fillRect(fx + .3, fy + r + 5.5 - legOff, 3, 2);
+  drawMiniLeg(X, fx - 1.5, fy + r - 2, 8, 2.8, legOff);
+  drawMiniLeg(X, fx + 1.5, fy + r - 2, 8, 2.8, -legOff);
 
   // Body with gradient
   const bg = X.createRadialGradient(fx - r*.2, fy - r*.15 + bobAnim, 0, fx, fy + bobAnim, r);
@@ -1713,7 +2051,7 @@ function render() {
   X.fillStyle = '#000'; X.fillRect(0, 0, W, H);
 
   X.save();
-  X.translate(-cam.x, -cam.y);
+  X.translate(-cam.x + screenShakeX, -cam.y + screenShakeY);
 
   drawGround();
 
@@ -1755,18 +2093,132 @@ function render() {
   X.lineWidth = 4;
   X.strokeRect(0, 0, aw, ah);
 
+  // Ambient particles (in world space)
+  ambientParticles.forEach(ap => {
+    const alpha = Math.min(1, ap.life / ap.maxLife * 2) * Math.min(1, (ap.maxLife - ap.life) / 30);
+    X.globalAlpha = alpha;
+    if (ap.type === 'firefly') {
+      const glow = .4 + Math.sin(ap.phase) * .3;
+      X.globalAlpha = alpha * glow;
+      const fgrd = X.createRadialGradient(ap.x, ap.y, 0, ap.x, ap.y, ap.size * 4);
+      fgrd.addColorStop(0, ap.color);
+      fgrd.addColorStop(.4, ap.color.replace(')', ',.3)').replace('rgb','rgba'));
+      fgrd.addColorStop(1, 'rgba(0,0,0,0)');
+      X.fillStyle = fgrd;
+      X.fillRect(ap.x - ap.size*4, ap.y - ap.size*4, ap.size*8, ap.size*8);
+      X.fillStyle = ap.color;
+      X.beginPath(); X.arc(ap.x, ap.y, ap.size * .8, 0, Math.PI*2); X.fill();
+    } else if (ap.type === 'leaf') {
+      X.save();
+      X.translate(ap.x, ap.y);
+      X.rotate(ap.rot);
+      X.fillStyle = ap.color;
+      X.beginPath();
+      X.ellipse(0, 0, ap.size, ap.size * .4, 0, 0, Math.PI * 2);
+      X.fill();
+      X.strokeStyle = 'rgba(0,0,0,.2)';
+      X.lineWidth = .5;
+      X.beginPath(); X.moveTo(-ap.size*.6, 0); X.lineTo(ap.size*.6, 0); X.stroke();
+      X.restore();
+    } else if (ap.type === 'fog') {
+      const fgrd = X.createRadialGradient(ap.x, ap.y, 0, ap.x, ap.y, ap.size);
+      fgrd.addColorStop(0, 'rgba(80,120,60,.08)');
+      fgrd.addColorStop(.5, 'rgba(80,120,60,.04)');
+      fgrd.addColorStop(1, 'rgba(80,120,60,0)');
+      X.fillStyle = fgrd;
+      X.beginPath(); X.arc(ap.x, ap.y, ap.size, 0, Math.PI*2); X.fill();
+    } else if (ap.type === 'ember') {
+      const egrd = X.createRadialGradient(ap.x, ap.y, 0, ap.x, ap.y, ap.size * 3);
+      egrd.addColorStop(0, ap.color);
+      egrd.addColorStop(1, 'rgba(0,0,0,0)');
+      X.fillStyle = egrd;
+      X.fillRect(ap.x - ap.size*3, ap.y - ap.size*3, ap.size*6, ap.size*6);
+    } else {
+      X.fillStyle = ap.color;
+      X.beginPath(); X.arc(ap.x, ap.y, ap.size, 0, Math.PI*2); X.fill();
+    }
+    X.globalAlpha = 1;
+  });
+
   X.restore();
 
-  // Dungeon darkness
+  // ===== WEATHER OVERLAY (screen space) =====
+  if (curArea === 'swamp') {
+    // Rain
+    X.strokeStyle = 'rgba(120,160,180,.25)';
+    X.lineWidth = 1;
+    weatherDrops.forEach(wd => {
+      X.beginPath(); X.moveTo(wd.x, wd.y); X.lineTo(wd.x - 2, wd.y + wd.len); X.stroke();
+    });
+  } else if (curArea === 'desert') {
+    // Sand wind
+    X.globalAlpha = .15;
+    X.strokeStyle = '#c0a860';
+    X.lineWidth = 1;
+    weatherDrops.forEach(wd => {
+      X.beginPath(); X.moveTo(wd.x, wd.y); X.lineTo(wd.x + 6, wd.y + (Math.random()-.5)*2); X.stroke();
+    });
+    X.globalAlpha = 1;
+  }
+
+  // ===== DAY/NIGHT CYCLE OVERLAY =====
+  // 0..0.25 = dawn, 0.25..0.5 = day, 0.5..0.75 = dusk, 0.75..1.0 = night
+  if (curArea !== 'dungeon') {
+    let nightAlpha = 0;
+    let tintR = 0, tintG = 0, tintB = 0;
+    if (dayNightCycle < .15) { // early dawn
+      nightAlpha = .25 - dayNightCycle * 1.2;
+      tintR = 60; tintG = 30; tintB = 80;
+    } else if (dayNightCycle < .3) { // dawn→day
+      const t = (dayNightCycle - .15) / .15;
+      nightAlpha = Math.max(0, .07 - t * .07);
+      tintR = 80 * (1 - t); tintG = 50 * (1 - t); tintB = 20 * (1 - t);
+    } else if (dayNightCycle < .55) { // full day
+      nightAlpha = 0;
+    } else if (dayNightCycle < .7) { // dusk
+      const t = (dayNightCycle - .55) / .15;
+      nightAlpha = t * .12;
+      tintR = 90 * t; tintG = 40 * t; tintB = 20 * t;
+    } else { // night
+      const t = Math.min(1, (dayNightCycle - .7) / .1);
+      nightAlpha = .12 + t * .2;
+      tintR = 10; tintG = 10; tintB = 50;
+    }
+    if (nightAlpha > 0) {
+      X.fillStyle = `rgba(${tintR},${tintG},${tintB},${nightAlpha})`;
+      X.fillRect(0, 0, W, H);
+    }
+  }
+
+  // Dungeon darkness (torch light around player)
   if (curArea === 'dungeon') {
     const r = 120 + G.level * 10;
-    const grd = X.createRadialGradient(G.x - cam.x, G.y - cam.y, r * .3, G.x - cam.x, G.y - cam.y, r * 2.5);
+    const px = G.x - cam.x + screenShakeX, py = G.y - cam.y + screenShakeY;
+    // Flickering torch light
+    const flicker = 1 + Math.sin(performance.now()*.008)*.04 + Math.sin(performance.now()*.013)*.03;
+    const tr = r * flicker;
+    const grd = X.createRadialGradient(px, py, tr * .3, px, py, tr * 2.5);
     grd.addColorStop(0, 'rgba(0,0,0,0)');
-    grd.addColorStop(.5, 'rgba(0,0,0,.3)');
-    grd.addColorStop(1, 'rgba(0,0,0,.82)');
+    grd.addColorStop(.3, 'rgba(0,0,0,.1)');
+    grd.addColorStop(.5, 'rgba(0,0,0,.4)');
+    grd.addColorStop(1, 'rgba(0,0,0,.88)');
     X.fillStyle = grd;
     X.fillRect(0, 0, W, H);
+    // Warm torch tint near player
+    const warmGrd = X.createRadialGradient(px, py, 0, px, py, tr * 1.2);
+    warmGrd.addColorStop(0, 'rgba(255,160,50,.06)');
+    warmGrd.addColorStop(.5, 'rgba(255,100,30,.03)');
+    warmGrd.addColorStop(1, 'rgba(0,0,0,0)');
+    X.fillStyle = warmGrd;
+    X.fillRect(0, 0, W, H);
   }
+
+  // ===== VIGNETTE EFFECT =====
+  const vigGrd = X.createRadialGradient(W/2, H/2, W*.3, W/2, H/2, W*.75);
+  vigGrd.addColorStop(0, 'rgba(0,0,0,0)');
+  vigGrd.addColorStop(1, 'rgba(0,0,0,.3)');
+  X.fillStyle = vigGrd;
+  X.fillRect(0, 0, W, H);
 
   // Minimap
   drawMinimap();
@@ -1989,6 +2441,106 @@ function update(dt) {
     if (ft.life <= 0) floatTexts.splice(i, 1);
   }
 
+  // ===== AMBIENT VFX =====
+  // Day/night cycle (full cycle = 120 seconds)
+  dayNightCycle = (dayNightCycle + dt / 120) % 1;
+
+  // Screen shake decay
+  if (screenShakeDur > 0) {
+    screenShakeDur -= dt;
+    screenShakeX = (Math.random() - .5) * screenShakeDur * 30;
+    screenShakeY = (Math.random() - .5) * screenShakeDur * 30;
+  } else { screenShakeX = 0; screenShakeY = 0; }
+
+  // Ambient particle spawning per area
+  ambientTimer -= dt;
+  if (ambientTimer <= 0) {
+    const cx = cam.x + W / 2, cy = cam.y + H / 2;
+    if (curArea === 'village') {
+      // Fireflies near buildings
+      ambientParticles.push({x: cx + (rr()-.5)*W, y: cy + (rr()-.5)*H,
+        vx:(rr()-.5)*.3, vy:(rr()-.5)*.3, life:180, maxLife:180,
+        color:'#ffe080', size:2, type:'firefly', phase: rr()*Math.PI*2});
+    } else if (curArea === 'forest') {
+      // Falling leaves
+      ambientParticles.push({x: cx + (rr()-.5)*W, y: cy - H/2,
+        vx: .3 + rr()*.5, vy: .8 + rr()*.5, life:240, maxLife:240,
+        color: ['#8a5a20','#6a8a30','#aa6a20','#c09030'][Math.floor(rr()*4)],
+        size: 3 + rr()*2, type:'leaf', rot: rr()*Math.PI*2, rotSpd: (rr()-.5)*.05});
+      // Fireflies
+      if (rr() < .3) ambientParticles.push({x: cx + (rr()-.5)*W, y: cy + (rr()-.5)*H,
+        vx:(rr()-.5)*.2, vy:(rr()-.5)*.2, life:200, maxLife:200,
+        color:'#80ff80', size:2.5, type:'firefly', phase: rr()*Math.PI*2});
+    } else if (curArea === 'swamp') {
+      // Fog wisps
+      ambientParticles.push({x: cx + (rr()-.5)*W, y: cy + (rr()-.5)*H,
+        vx: .1 + rr()*.3, vy: (rr()-.5)*.1, life:300, maxLife:300,
+        color:'rgba(100,140,80,.15)', size: 20 + rr()*30, type:'fog'});
+      // Bubbles from water
+      if (rr() < .4) ambientParticles.push({x: cx + (rr()-.5)*W, y: cy + (rr()-.5)*H,
+        vx: 0, vy: -.3 - rr()*.2, life:80, maxLife:80,
+        color:'rgba(60,120,60,.4)', size: 2 + rr()*3, type:'bubble'});
+    } else if (curArea === 'desert') {
+      // Sand particles
+      ambientParticles.push({x: cx - W/2, y: cy + (rr()-.5)*H,
+        vx: 1.5 + rr()*2, vy: (rr()-.5)*.3, life:160, maxLife:160,
+        color:'rgba(180,160,100,.3)', size: 1.5 + rr()*2, type:'sand'});
+    } else if (curArea === 'dungeon') {
+      // Floating embers
+      ambientParticles.push({x: cx + (rr()-.5)*W, y: cy + H/2,
+        vx:(rr()-.5)*.5, vy: -.5 - rr()*.5, life:200, maxLife:200,
+        color: rr() < .5 ? '#ff6020' : '#ff9040', size: 1.5 + rr()*2, type:'ember'});
+      // Dust motes
+      if (rr() < .4) ambientParticles.push({x: cx + (rr()-.5)*W, y: cy + (rr()-.5)*H,
+        vx:(rr()-.5)*.2, vy:(rr()-.5)*.1, life:250, maxLife:250,
+        color:'rgba(160,140,120,.2)', size: 1 + rr()*1.5, type:'dust'});
+    } else if (curArea === 'castle') {
+      // Banner flags dust / sparkle
+      if (rr() < .5) ambientParticles.push({x: cx + (rr()-.5)*W, y: cy + (rr()-.5)*H,
+        vx:(rr()-.5)*.3, vy: -.2 - rr()*.2, life:120, maxLife:120,
+        color:'rgba(200,180,100,.3)', size: 2 + rr()*2, type:'sparkle'});
+    }
+    ambientTimer = curArea === 'desert' ? .05 : .15;
+  }
+
+  // Update ambient particles
+  for (let i = ambientParticles.length - 1; i >= 0; i--) {
+    const ap = ambientParticles[i];
+    ap.x += ap.vx; ap.y += ap.vy;
+    ap.life--;
+    if (ap.type === 'firefly') {
+      ap.phase += .05;
+      ap.vx += (rr()-.5)*.04; ap.vy += (rr()-.5)*.04;
+      ap.vx *= .98; ap.vy *= .98;
+    }
+    if (ap.type === 'leaf') { ap.rot += ap.rotSpd; ap.vx += (rr()-.5)*.02; }
+    if (ap.life <= 0) ambientParticles.splice(i, 1);
+  }
+  // Cap ambient particles
+  if (ambientParticles.length > 80) ambientParticles.splice(0, ambientParticles.length - 80);
+
+  // Weather drops (rain in swamp, sandstorm in desert)
+  if (curArea === 'swamp' || curArea === 'desert') {
+    weatherTimer -= dt;
+    if (weatherTimer <= 0) {
+      for (let i = 0; i < 3; i++) {
+        if (curArea === 'swamp') {
+          weatherDrops.push({x: rr()*W, y: -5, vy: 8 + rr()*6, len: 8 + rr()*8, life: 40});
+        } else {
+          weatherDrops.push({x: -5, y: rr()*H, vx: 10 + rr()*8, life: 50});
+        }
+      }
+      weatherTimer = .02;
+    }
+  } else { weatherDrops = []; }
+  for (let i = weatherDrops.length - 1; i >= 0; i--) {
+    const wd = weatherDrops[i];
+    if (wd.vy) wd.y += wd.vy; else wd.x += wd.vx;
+    wd.life--;
+    if (wd.life <= 0 || wd.y > H + 10 || wd.x > W + 10) weatherDrops.splice(i, 1);
+  }
+  if (weatherDrops.length > 200) weatherDrops.splice(0, weatherDrops.length - 200);
+
   // Day timer (1 day = 45 seconds)
   dayTimer += dt;
 
@@ -2098,6 +2650,20 @@ function doAttack() {
 
 function killEnemy(e) {
   G.kills++;
+  // Quest kill tracking
+  if (e.typeId && G.quests.length > 0) {
+    G.quests.forEach(qid => {
+      const q = QUESTS.find(qq => qq.id === qid);
+      if (q && q.type === 'kill' && q.target === e.typeId) {
+        G.questKills[e.typeId] = (G.questKills[e.typeId] || 0) + 1;
+        const progress = Math.min(G.questKills[e.typeId], q.need);
+        floatText(G.x, G.y - 50, `${q.icon} ${progress}/${q.need}`, '#40c0ff');
+        if (progress >= q.need) {
+          log(`📜 Задание «${q.name}» выполнено! Вернитесь к ${q.npcName}`, 'lg');
+        }
+      }
+    });
+  }
   G.xp += e.xp;
   const goldAmt = e.gold + Math.floor(rr() * e.gold * .5);
   itemsOnGround.push({x: e.x, y: e.y, type: 'gold', value: goldAmt});
@@ -2117,6 +2683,14 @@ function killEnemy(e) {
     particles.push({x: e.x, y: e.y, vx: Math.cos(a) * (2 + rr() * 4), vy: Math.sin(a) * (2 + rr() * 4),
       life: 25 + rr() * 15, maxLife: 40, color: e.color1, size: 3 + rr() * 5});
   }
+  // Soul rising effect
+  for (let i = 0; i < 5; i++) {
+    particles.push({x: e.x + (rr()-.5)*12, y: e.y,
+      vx: (rr()-.5)*1, vy: -2 - rr()*3,
+      life: 50 + rr()*30, maxLife: 80, color: 'rgba(180,220,255,.5)', size: 4 + rr()*4});
+  }
+  // Small screen shake on kill
+  screenShakeDur = Math.max(screenShakeDur, .06);
   log(`⚔️ ${e.name} повержен! +${e.xp}✨ `, 'lc');
   checkLevelUp();
 }
@@ -2126,6 +2700,8 @@ function damagePlayer(dmg) {
   const actual = Math.max(1, dmg - G.def + Math.floor(rr() * 3));
   G.hp -= actual;
   G.invincible = 25;
+  // Screen shake on hit
+  screenShakeDur = Math.min(.5, .1 + actual * .02);
   floatText(G.x, G.y - G.r - 10, actual, '#f44', 18);
   for (let i = 0; i < 6; i++) {
     particles.push({x: G.x, y: G.y, vx: (rr()-.5)*4, vy: (rr()-.5)*4,
@@ -2200,6 +2776,7 @@ addEventListener('keydown', e => {
   if ((k === 'c' || k === 'с') && G.running) { if (overlayOpen) closeAllOv(); else openStats(); }
   if ((k === 'p' || k === 'з') && G.running) { if (overlayOpen) closeAllOv(); else openParty(); }
   if ((k === 'b' || k === 'и') && G.running) { if (overlayOpen) closeAllOv(); else openProperties(); }
+  if ((k === 'j' || k === 'о') && G.running) { if (overlayOpen) closeAllOv(); else openQuestLog(); }
   if (k === 'escape') closeAllOv();
   if (k === 'shift' && dashCooldown <= 0 && dashTimer <= 0 && G.stamina >= 18) {
     e.preventDefault();
@@ -2489,7 +3066,98 @@ function talkNPC(npc) {
   else if (npc.dialog === 'tavern') openTavern();
   else if (npc.dialog === 'slave') openSlaveMarket(npc.traderId);
   else if (npc.dialog === 'property') openProperties();
+  else if (npc.dialog === 'quest') openQuestDialog(npc);
 }
+
+// ===== QUEST DIALOG =====
+function openQuestDialog(npc) {
+  const q = QUESTS.find(qq => qq.id === npc.questId);
+  if (!q) return;
+  const isDone = G.questsDone.includes(q.id);
+  const isActive = G.quests.includes(q.id);
+
+  let html = `<h2>${q.icon} ${q.name}</h2>`;
+  html += `<p style="color:#aaa;margin:8px 0">${npc.name} говорит:</p>`;
+
+  if (isDone) {
+    html += `<p style="color:#8b8;margin:10px 0">«Вы уже выполнили это задание. Благодарю!»</p>`;
+    html += `<button class="btn" onclick="closeOv('ov-quest')">Закрыть</button>`;
+  } else if (isActive) {
+    const progress = G.questKills[q.target] || 0;
+    const done = progress >= q.need;
+    html += `<p style="color:#ccc;margin:10px 0;line-height:1.8">${q.desc}</p>`;
+    html += `<div style="margin:10px 0;padding:8px;background:rgba(0,0,0,.3);border-radius:6px">`;
+    html += `<span style="color:${done?'#4a4':'#aa4'}">Прогресс: ${Math.min(progress,q.need)}/${q.need} ${done?'✅':'⏳'}</span>`;
+    html += `</div>`;
+    if (done) {
+      html += `<button class="btn btn-g" onclick="completeQuest('${q.id}')">✅ Получить награду</button>`;
+    } else {
+      html += `<button class="btn" onclick="closeOv('ov-quest')">Понятно</button>`;
+    }
+  } else {
+    html += `<p style="color:#ccc;margin:10px 0;line-height:1.8">«${q.desc}»</p>`;
+    html += `<div style="margin:10px 0;padding:8px;background:rgba(0,0,0,.3);border-radius:6px;font-size:13px">`;
+    html += `<div style="color:#d4a017">Награда:</div>`;
+    html += `<div style="color:#aaa;margin-top:4px">💰 ${q.rewardGold} золота • ✨ ${q.rewardXp} опыта`;
+    if (q.rewardItem && ITEMS[q.rewardItem]) html += ` • 🎁 ${ITEMS[q.rewardItem].name}`;
+    html += `</div></div>`;
+    html += `<button class="btn btn-g" onclick="acceptQuest('${q.id}')">✅ Принять задание</button> `;
+    html += `<button class="btn" onclick="closeOv('ov-quest')">Отказаться</button>`;
+  }
+
+  document.getElementById('quest-content').innerHTML = html;
+  openOv('ov-quest');
+}
+
+window.acceptQuest = function(qid) {
+  if (!G.quests.includes(qid)) {
+    G.quests.push(qid);
+    const q = QUESTS.find(qq => qq.id === qid);
+    if (q) {
+      if (!G.questKills[q.target]) G.questKills[q.target] = 0;
+      log(`📜 Квест принят: ${q.icon} ${q.name}`, 'li');
+    }
+  }
+  closeOv('ov-quest');
+};
+
+window.completeQuest = function(qid) {
+  const q = QUESTS.find(qq => qq.id === qid);
+  if (!q) return;
+  const progress = G.questKills[q.target] || 0;
+  if (progress < q.need) return;
+
+  G.gold += q.rewardGold;
+  G.totalGold += q.rewardGold;
+  G.xp += q.rewardXp;
+  if (q.rewardItem && ITEMS[q.rewardItem]) {
+    const existing = G.inv.find(i => i.id === q.rewardItem);
+    if (existing) existing.qty = (existing.qty || 1) + 1;
+    else G.inv.push({...ITEMS[q.rewardItem], qty:1});
+  }
+  G.quests = G.quests.filter(id => id !== qid);
+  G.questsDone.push(qid);
+  log(`✅ Квест выполнен: ${q.icon} ${q.name} — +${q.rewardGold}💰 +${q.rewardXp}XP`, 'lg');
+  floatText(G.x, G.y - 40, `Квест выполнен! +${q.rewardGold}💰`, '#4a4');
+
+  // Check for follow-up quest
+  if (q.followUp) {
+    const nextQ = QUESTS.find(qq => qq.id === q.followUp);
+    if (nextQ) log(`📜 Новое задание доступно: ${nextQ.icon} ${nextQ.name} (${nextQ.npcName})`, 'li');
+  }
+
+  // Check level up
+  while (G.xp >= G.xpNeed) {
+    G.xp -= G.xpNeed;
+    G.level++;
+    G.xpNeed = Math.floor(G.xpNeed * 1.45);
+    G.pts += 3;
+    log(`⬆️ Уровень ${G.level}! +3 очка характеристик`, 'lg');
+  }
+
+  updateHUD();
+  closeOv('ov-quest');
+};
 
 // ===== INVENTORY =====
 function openInv() {
@@ -2529,10 +3197,11 @@ window.openInv = openInv;
 function openStats() {
   const gIcon = G.gender === 'f' ? '♀' : '♂';
   const clsInfo = G.className ? `${G.classIcon || ''} ${G.className}` : '';
+  const raceInfo = RACES[G.race] ? `${RACES[G.race].icon} ${RACES[G.race].name}` : '';
   document.getElementById('stats-content').innerHTML = `
     <div style="text-align:center;margin-bottom:14px">
       <div style="font-size:18px;color:#d4a017;margin-top:4px">${G.playerName || 'Герой'} ${gIcon}</div>
-      <div style="font-size:13px;color:#b08830">${clsInfo} — Уровень ${G.level}</div>
+      <div style="font-size:13px;color:#b08830">${clsInfo} — ${raceInfo} — Уровень ${G.level}</div>
       <div style="font-size:12px;color:#888">Опыт: ${G.xp}/${G.xpNeed}</div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;margin-bottom:14px">
@@ -2557,6 +3226,38 @@ function openStats() {
 }
 window.upS = s => { if (G.pts <= 0) return; G[s]++; G.pts--; recalc(); openStats(); updateHUD(); };
 window.openStats = openStats;
+
+// ===== QUEST LOG =====
+function openQuestLog() {
+  let html = '';
+  if (!G.quests || G.quests.length === 0) {
+    html = '<p style="color:#666;padding:12px">Нет активных квестов. Поговорите с NPC (❗) чтобы получить задания.</p>';
+  } else {
+    G.quests.forEach(qid => {
+      const q = QUESTS.find(qq => qq.id === qid);
+      if (!q) return;
+      const progress = G.questKills[q.target] || 0;
+      const done = progress >= q.need;
+      html += `<div class="card" style="border-color:${done?'#4a4':'#554'}">
+        <div class="nm">${q.icon} ${q.name} ${done?'✅':''}</div>
+        <div class="ds" style="margin:4px 0">${q.desc}</div>
+        <div class="ds">Прогресс: <span style="color:${done?'#4a4':'#aa4'}">${Math.min(progress,q.need)}/${q.need}</span></div>
+        <div class="ds">Награда: 💰${q.rewardGold} ✨${q.rewardXp}${q.rewardItem && ITEMS[q.rewardItem] ? ' 🎁'+ITEMS[q.rewardItem].name : ''}</div>
+        <div class="ds" style="color:#777">📍 ${q.npcName}</div>
+      </div>`;
+    });
+  }
+  if (G.questsDone && G.questsDone.length > 0) {
+    html += '<h3 style="color:#666;margin-top:16px">Выполненные:</h3>';
+    G.questsDone.forEach(qid => {
+      const q = QUESTS.find(qq => qq.id === qid);
+      if (q) html += `<div class="card" style="opacity:.5;border-color:#333"><div class="nm">${q.icon} ${q.name} ✅</div></div>`;
+    });
+  }
+  document.getElementById('quest-content').innerHTML = `<h2>📜 Журнал квестов</h2>` + html;
+  openOv('ov-quest');
+}
+window.openQuestLog = openQuestLog;
 
 // ===== PARTY =====
 function openParty() {
@@ -2837,23 +3538,23 @@ const CHAR_CLASSES = [
    startWeapon:'iron_sword', startArmor:'leather'},
   {id:'rogue', name:'Разбойник', icon:'🗡️', desc:'Быстрый и ловкий, наносит критические удары',
    stats:{str:3,agi:6,vit:3,chr:3}, bonusAtk:2, bonusDef:0, bonusHp:0, color:'#5a6a5a',
-   startWeapon:'iron_sword', startArmor:null},
+   startWeapon:'dagger', startArmor:null},
   {id:'knight', name:'Рыцарь', icon:'🛡️', desc:'Закованный в броню защитник, несокрушимая стена',
    stats:{str:4,agi:2,vit:6,chr:3}, bonusAtk:1, bonusDef:4, bonusHp:40, color:'#6a7a8a',
-   startWeapon:'rusty_sword', startArmor:'chain'},
+   startWeapon:'mace', startArmor:'chain'},
   {id:'merchant', name:'Купец', icon:'💰', desc:'Харизматичный торговец, лучшие цены и доход',
    stats:{str:2,agi:3,vit:3,chr:7}, bonusAtk:0, bonusDef:0, bonusHp:0, color:'#8a7a5a',
-   startWeapon:'rusty_sword', startArmor:null, bonusGold:80},
+   startWeapon:'staff', startArmor:null, bonusGold:80},
   {id:'hunter', name:'Охотник', icon:'🏹', desc:'Следопыт из дикого леса, быстрый и меткий',
    stats:{str:4,agi:5,vit:4,chr:2}, bonusAtk:2, bonusDef:1, bonusHp:10, color:'#5a7050',
-   startWeapon:'iron_sword', startArmor:'leather'},
+   startWeapon:'hunting_bow', startArmor:'leather'},
   {id:'brute', name:'Громила', icon:'💪', desc:'Грубая сила, сокрушающие удары, мало ловкости',
    stats:{str:7,agi:1,vit:5,chr:2}, bonusAtk:5, bonusDef:1, bonusHp:20, color:'#7a5a4a',
    startWeapon:'great_axe', startArmor:null},
 ];
 
 // ===== CHARACTER CREATOR =====
-let ccGender = 'm', ccClass = 'warrior';
+let ccGender = 'm', ccClass = 'warrior', ccRace = 'human';
 let ccSkinColor = '#e0b888', ccHairColor = '#4a3020', ccBodyColor = '#5a5a8a';
 const CC_SKINS = ['#f0dcc0','#e8c8a0','#e0b888','#d4a878','#c09060','#b87848','#a06838','#8a5830'];
 const CC_HAIRS = ['#1a1a1a','#2a1a0a','#4a3020','#6a4830','#8a6040','#c4a060','#dab070','#8a2020','#d04020','#f0e8d0'];
@@ -2863,13 +3564,14 @@ const CC_BODIES_F = ['#8a4060','#6a5080','#4a6a60','#7a6040','#5a4a7a','#8a6a50'
 function openCharCreator() {
   document.getElementById('start').style.display = 'none';
   document.getElementById('charcreate').classList.add('show');
-  ccGender = 'm'; ccClass = 'warrior';
+  ccGender = 'm'; ccClass = 'warrior'; ccRace = 'human';
   ccSkinColor = '#e0b888'; ccHairColor = '#4a3020'; ccBodyColor = '#5a5a8a';
   // Random name
   const mNames = ['Ратибор','Святослав','Владимир','Ярослав','Игорь','Олег','Богдан','Мирон'];
   const fNames = ['Забава','Ярослава','Милана','Злата','Рада','Василиса','Любава','Снежана'];
   document.getElementById('cc-name').value = mNames[Math.floor(Math.random()*mNames.length)];
   ccRenderClasses();
+  ccRenderRaces();
   ccRenderColors();
   ccUpdatePreview();
 }
@@ -2901,6 +3603,33 @@ function ccRenderClasses() {
   ).join('');
 }
 
+function ccRenderRaces() {
+  const el = document.getElementById('cc-races');
+  el.innerHTML = RACE_IDS.map(rid => {
+    const r = RACES[rid];
+    const bonuses = [];
+    if (r.bonusStr) bonuses.push(`💪${r.bonusStr>0?'+':''}${r.bonusStr}`);
+    if (r.bonusAgi) bonuses.push(`🏃${r.bonusAgi>0?'+':''}${r.bonusAgi}`);
+    if (r.bonusVit) bonuses.push(`❤️${r.bonusVit>0?'+':''}${r.bonusVit}`);
+    if (r.bonusChr) bonuses.push(`🗣️${r.bonusChr>0?'+':''}${r.bonusChr}`);
+    return `<div class="cc-cls${ccRace===rid?' sel':''}" onclick="ccSelectRace('${rid}')">
+      <div class="cls-name">${r.icon} ${r.name}</div>
+      <div class="cls-desc">${r.desc}</div>
+      <div class="cls-stats">${bonuses.join(' ')}</div>
+    </div>`;
+  }).join('');
+}
+
+window.ccSelectRace = function(rid) {
+  ccRace = rid;
+  const race = RACES[rid];
+  // Set skin color to first of race's skin range
+  ccSkinColor = race.skinRange[0];
+  ccRenderRaces();
+  ccRenderColors();
+  ccUpdatePreview();
+};
+
 function ccSelectClass(id) {
   ccClass = id;
   ccRenderClasses();
@@ -2911,7 +3640,8 @@ function ccRenderColors() {
   const mkBoxes = (arr, sel, cb) => arr.map(c =>
     `<div class="cbox${c===sel?' sel':''}" style="background:${c}" onclick="${cb}('${c}')"></div>`
   ).join('');
-  document.getElementById('cc-skin-colors').innerHTML = mkBoxes(CC_SKINS, ccSkinColor, 'ccPickSkin');
+  const raceSkins = RACES[ccRace] ? RACES[ccRace].skinRange : CC_SKINS;
+  document.getElementById('cc-skin-colors').innerHTML = mkBoxes(raceSkins, ccSkinColor, 'ccPickSkin');
   document.getElementById('cc-hair-colors').innerHTML = mkBoxes(CC_HAIRS, ccHairColor, 'ccPickHair');
   const bodies = ccGender === 'f' ? CC_BODIES_F : CC_BODIES_M;
   document.getElementById('cc-body-colors').innerHTML = mkBoxes(bodies, ccBodyColor, 'ccPickBody');
@@ -3170,7 +3900,7 @@ function ccUpdatePreview() {
   cx.restore();
 
   // Head with realistic gradient
-  drawRealisticHead(cx, cx0, headY, headR, ccSkinColor, ccHairColor, ccGender);
+  drawRealisticHead(cx, cx0, headY, headR, ccSkinColor, ccHairColor, ccGender, false, (RACES[ccRace]||RACES.human).earType);
   // Additional head detail for preview - chin contour
   cx.fillStyle = 'rgba(0,0,0,.04)';
   cx.beginPath(); cx.ellipse(cx0, headY + headR * .6, headR * .5, headR * .3, 0, 0, Math.PI * 2); cx.fill();
@@ -3262,10 +3992,10 @@ function confirmCharacter() {
     bust: +document.getElementById('cc-bust').value,
   };
 
-  startGameWithChar(playerName, ccGender, cls, ccSkinColor, ccHairColor, ccBodyColor, bodyShape);
+  startGameWithChar(playerName, ccGender, cls, ccSkinColor, ccHairColor, ccBodyColor, bodyShape, ccRace);
 }
 
-function startGameWithChar(name, gender, cls, skin, hair, body, shape) {
+function startGameWithChar(name, gender, cls, skin, hair, body, shape, raceId) {
   closeAllOv();
   document.getElementById('start').style.display = 'none';
   document.getElementById('death').classList.remove('show');
@@ -3274,6 +4004,8 @@ function startGameWithChar(name, gender, cls, skin, hair, body, shape) {
   document.getElementById('log').style.display = 'block';
   document.getElementById('minimap').style.display = 'block';
   initGame();
+
+  const race = RACES[raceId] || RACES.human;
 
   // Apply character creation choices
   G.playerName = name;
@@ -3285,12 +4017,13 @@ function startGameWithChar(name, gender, cls, skin, hair, body, shape) {
   G.hairColor = hair;
   G.bodyColor = body;
   G.bodyShape = shape;
+  G.race = raceId || 'human';
 
-  // Apply class stats
-  G.str = cls.stats.str;
-  G.agi = cls.stats.agi;
-  G.vit = cls.stats.vit;
-  G.chr = cls.stats.chr;
+  // Apply class stats + race bonuses
+  G.str = cls.stats.str + (race.bonusStr || 0);
+  G.agi = cls.stats.agi + (race.bonusAgi || 0);
+  G.vit = cls.stats.vit + (race.bonusVit || 0);
+  G.chr = cls.stats.chr + (race.bonusChr || 0);
   G.baseAtk = 5 + (cls.bonusAtk || 0);
   G.baseDef = 2 + (cls.bonusDef || 0);
   G.gold = 60 + (cls.bonusGold || 0);
